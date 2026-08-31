@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer focus brackets / viewfinder corners -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M32,38 L32,32 L38,32 M70,32 L76,32 L76,38 M76,70 L76,76 L70,76 M38,76 L32,76 L32,70" />
+
+    <!-- Left side of circle: Grayscale tone (representing monochrome transition) -->
+    <path
+        android:pathData="M54,34 A20,20 0 0,0 54,74 Z"
+        android:fillColor="#809E9E9E" />
+
+    <!-- Right side of circle: Emerald Focus Green tone -->
+    <path
+        android:pathData="M54,34 A20,20 0 0,1 54,74 Z"
+        android:fillColor="#4CAF50" />
+
+    <!-- Central Outer Circle stroke -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.8"
+        android:pathData="M54,54 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0" />
+
+    <!-- Center Focus Dot and Hourglass / Reticle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,44 L60,44 L56,52 L60,60 L48,60 L52,52 Z" />
+
+    <path
+        android:fillColor="#121D17"
+        android:pathData="M54,54 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
+
+</vector>

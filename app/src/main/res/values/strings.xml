@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Enigma Focus</string>
+    <string name="accessibility_service_description">Permite a Enigma Focus detectar la apertura de aplicaciones distractoras (como Instagram o Reddit) y bloquearlas durante tus sesiones de concentración.</string>
+    <string name="grayscale_tile_label">Escala de Grises</string>
+    <string name="focus_tile_label">Modo Enfoque</string>
+    <string name="notification_channel_name">Sesión de Concentración</string>
+    <string name="notification_channel_desc">Notificaciones para el temporizador y estado de concentración</string>
+</resources>
