@@ -167,6 +167,7 @@ fun DirectBreathingBlockScreen(
     onGoHome: () -> Unit,
     onUnlockTemporary: () -> Unit
 ) {
+    val isEng = AppPreferences.isEnglish()
     val startTime = rememberSaveable(packageName) { System.currentTimeMillis() }
     var secondsLeft by rememberSaveable(packageName) { mutableIntStateOf(10) }
     var breathingPhase by rememberSaveable(packageName) { mutableStateOf(if (isEng) "Inhale deeply through your nose" else "Inhala profundamente por la nariz") }
