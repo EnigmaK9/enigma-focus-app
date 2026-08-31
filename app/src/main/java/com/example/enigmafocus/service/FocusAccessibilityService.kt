@@ -142,7 +142,6 @@ class FocusAccessibilityService : AccessibilityService() {
     private fun checkBrowserUrls(root: AccessibilityNodeInfo, packageName: String) {
         if (!browserPackages.contains(packageName)) return
 
-        // Check if focus session is active or always-block is enabled
         val isScheduledActive = AppPreferences.isAnyScheduledIntervalActive()
         val isFocusActive = AppPreferences.isFocusActive() || isScheduledActive
         val isAlwaysBlock = AppPreferences.isAlwaysBlockEnabled()
@@ -154,8 +153,10 @@ class FocusAccessibilityService : AccessibilityService() {
             if (detectedUrl.contains(domain)) {
                 if (AppPreferences.isTemporarilyWhitelisted(packageName)) return
 
+                if (BlockOverlayManager.isShowing()) return
+
                 val now = System.currentTimeMillis()
-                if (domain == lastBlockedPkg && (now - lastBlockedTime) < 500) return
+                if (domain == lastBlockedPkg && (now - lastBlockedTime) < 1000) return
 
                 lastBlockedPkg = domain
                 lastBlockedTime = now
@@ -206,7 +207,8 @@ class FocusAccessibilityService : AccessibilityService() {
         if (packageName == this.packageName ||
             packageName == "android" ||
             packageName == "com.android.systemui" ||
-            packageName.contains("launcher")
+            packageName.contains("systemui") ||
+            isLauncherPackage(packageName)
         ) {
             return
         }
@@ -216,15 +218,29 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun isLauncherPackage(packageName: String): Boolean {
+        return packageName.contains("launcher") ||
+               packageName == "com.miui.home" ||
+               packageName == "com.sec.android.app.launcher" ||
+               packageName == "com.huawei.android.launcher" ||
+               packageName == "com.oppo.launcher" ||
+               packageName == "com.vivo.launcher"
+    }
+
     private fun checkAndBlockPackage(packageName: String) {
+        // System and own UI events should NEVER dismiss the active block overlay
         if (packageName == this.packageName ||
             packageName == "android" ||
             packageName == "com.android.systemui" ||
-            packageName == "com.google.android.apps.nexuslauncher" ||
-            packageName == "com.android.launcher3" ||
-            packageName.contains("launcher")
+            packageName.contains("systemui") ||
+            packageName.contains("inputmethod")
         ) {
-            if (BlockOverlayManager.isShowing() && packageName != this.packageName) {
+            return
+        }
+
+        // If user went to Launcher, dismiss overlay so they can use home screen
+        if (isLauncherPackage(packageName)) {
+            if (BlockOverlayManager.isShowing()) {
                 BlockOverlayManager.hideOverlay(this)
             }
             return
@@ -249,7 +265,8 @@ class FocusAccessibilityService : AccessibilityService() {
 
         val isBlocked = AppPreferences.isAppBlocked(packageName)
         if (!isBlocked) {
-            if (BlockOverlayManager.isShowing()) {
+            // Only hide overlay if user explicitly switched to an unblocked allowed application
+            if (BlockOverlayManager.isShowing() && BlockOverlayManager.getCurrentPackage() != packageName) {
                 BlockOverlayManager.hideOverlay(this)
             }
             return
@@ -262,12 +279,13 @@ class FocusAccessibilityService : AccessibilityService() {
             return
         }
 
-        if (BlockOverlayManager.isShowing() && lastBlockedPkg == packageName) {
+        // If overlay is ALREADY showing for this package, do NOTHING (never re-attach or reset timer)
+        if (BlockOverlayManager.isShowing()) {
             return
         }
 
         val now = System.currentTimeMillis()
-        if (packageName == lastBlockedPkg && (now - lastBlockedTime) < 300) {
+        if (packageName == lastBlockedPkg && (now - lastBlockedTime) < 1000) {
             return
         }
         lastBlockedPkg = packageName

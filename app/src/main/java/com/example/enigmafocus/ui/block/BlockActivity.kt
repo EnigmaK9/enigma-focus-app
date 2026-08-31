@@ -51,6 +51,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -166,23 +167,24 @@ fun DirectBreathingBlockScreen(
     onGoHome: () -> Unit,
     onUnlockTemporary: () -> Unit
 ) {
-    val isEng = AppPreferences.isEnglish()
-    var secondsLeft by remember { mutableIntStateOf(10) }
-    var breathingPhase by remember { mutableStateOf(if (isEng) "Inhale slowly" else "Inhala lentamente") }
+    val startTime = rememberSaveable(packageName) { System.currentTimeMillis() }
+    var secondsLeft by rememberSaveable(packageName) { mutableIntStateOf(10) }
+    var breathingPhase by rememberSaveable(packageName) { mutableStateOf(if (isEng) "Inhale deeply through your nose" else "Inhala profundamente por la nariz") }
 
-    LaunchedEffect(Unit) {
-        secondsLeft = 10
-        while (secondsLeft > 0) {
-            breathingPhase = when (secondsLeft) {
+    LaunchedEffect(key1 = packageName) {
+        while (true) {
+            val elapsed = (System.currentTimeMillis() - startTime) / 1000
+            val remaining = (10 - elapsed).coerceAtLeast(0).toInt()
+            secondsLeft = remaining
+            breathingPhase = when (remaining) {
                 in 8..10 -> if (isEng) "Inhale deeply through your nose" else "Inhala profundamente por la nariz"
                 in 5..7 -> if (isEng) "Hold your breath calmly" else "Sostén el aire con calma"
                 in 1..4 -> if (isEng) "Exhale slowly and release tension" else "Exhala suavemente y suelta tensión"
-                else -> if (isEng) "Ready to focus" else "Listo para continuar"
+                else -> if (isEng) "Take a conscious choice" else "Toma una decisión consciente"
             }
-            delay(1000)
-            secondsLeft--
+            if (remaining <= 0) break
+            delay(250)
         }
-        breathingPhase = if (isEng) "Take a conscious choice" else "Toma una decisión consciente"
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "breathe")

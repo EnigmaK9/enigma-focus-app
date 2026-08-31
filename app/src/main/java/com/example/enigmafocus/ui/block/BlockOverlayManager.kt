@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
-import android.os.Build
 import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
@@ -29,6 +28,7 @@ object BlockOverlayManager {
     private const val TAG = "BlockOverlayManager"
     private var overlayView: ComposeView? = null
     private var isOverlayShowing = false
+    private var currentPackage: String = ""
 
     private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
         private val lifecycleRegistry = LifecycleRegistry(this)
@@ -55,12 +55,17 @@ object BlockOverlayManager {
 
     fun isShowing(): Boolean = isOverlayShowing
 
+    fun getCurrentPackage(): String = currentPackage
+
     fun showOverlay(
         service: AccessibilityService,
         blockedPackage: String,
         onUnlockTemporary: () -> Unit
     ) {
-        if (isOverlayShowing) return
+        // If already showing for the exact same package, never re-create
+        if (isOverlayShowing) {
+            return
+        }
 
         try {
             val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -68,7 +73,7 @@ object BlockOverlayManager {
             val appName = try {
                 val appInfo = service.packageManager.getApplicationInfo(blockedPackage, 0)
                 service.packageManager.getApplicationLabel(appInfo).toString()
-            } catch (e: PackageManager.NameNotFoundException) {
+            } catch (e: Exception) {
                 blockedPackage
             }
 
@@ -85,6 +90,7 @@ object BlockOverlayManager {
 
             val lifecycleOwner = OverlayLifecycleOwner()
             currentLifecycleOwner = lifecycleOwner
+            currentPackage = blockedPackage
 
             val composeView = ComposeView(service).apply {
                 setViewTreeLifecycleOwner(lifecycleOwner)
@@ -116,7 +122,7 @@ object BlockOverlayManager {
             windowManager.addView(composeView, layoutParams)
             overlayView = composeView
             isOverlayShowing = true
-            Log.i(TAG, "✅ TYPE_ACCESSIBILITY_OVERLAY attached and showing on top!")
+            Log.i(TAG, "✅ TYPE_ACCESSIBILITY_OVERLAY attached for $blockedPackage")
         } catch (e: Exception) {
             Log.e(TAG, "Error displaying accessibility overlay", e)
         }
@@ -135,6 +141,7 @@ object BlockOverlayManager {
             currentLifecycleOwner = null
             overlayView = null
             isOverlayShowing = false
+            currentPackage = ""
             Log.i(TAG, "Overlay dismissed cleanly")
         }
     }
