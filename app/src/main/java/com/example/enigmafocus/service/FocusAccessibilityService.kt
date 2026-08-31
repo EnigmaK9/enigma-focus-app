@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.data.FocusInterval
 import com.example.enigmafocus.ui.block.BlockOverlayManager
@@ -59,6 +60,27 @@ class FocusAccessibilityService : AccessibilityService() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     private var watchdogJob: Job? = null
 
+    private val browserPackages = setOf(
+        "com.android.chrome",
+        "com.brave.browser",
+        "com.microsoft.emmx",
+        "org.mozilla.firefox",
+        "com.opera.browser",
+        "com.sec.android.app.sbrowser",
+        "com.duckduckgo.mobile.android"
+    )
+
+    private val blockedWebDomains = listOf(
+        "instagram.com",
+        "reddit.com",
+        "tiktok.com",
+        "twitter.com",
+        "x.com",
+        "youtube.com",
+        "facebook.com",
+        "twitch.tv"
+    )
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         try {
@@ -92,6 +114,7 @@ class FocusAccessibilityService : AccessibilityService() {
                     val pkg = root?.packageName?.toString()
                     if (pkg != null) {
                         checkAndBlockPackage(pkg)
+                        checkBrowserUrls(root, pkg)
                         checkSleepSchedule(pkg)
                     }
                 } catch (e: Exception) {
@@ -108,7 +131,61 @@ class FocusAccessibilityService : AccessibilityService() {
         val pkgCharSequence = event.packageName ?: return
         val packageName = pkgCharSequence.toString()
         checkAndBlockPackage(packageName)
+
+        val root = rootInActiveWindow
+        if (root != null) {
+            checkBrowserUrls(root, packageName)
+        }
         checkSleepSchedule(packageName)
+    }
+
+    private fun checkBrowserUrls(root: AccessibilityNodeInfo, packageName: String) {
+        if (!browserPackages.contains(packageName)) return
+
+        // Check if focus session is active or always-block is enabled
+        val isScheduledActive = AppPreferences.isAnyScheduledIntervalActive()
+        val isFocusActive = AppPreferences.isFocusActive() || isScheduledActive
+        val isAlwaysBlock = AppPreferences.isAlwaysBlockEnabled()
+
+        if (!isFocusActive && !isAlwaysBlock) return
+
+        val detectedUrl = findUrlInNode(root)?.lowercase() ?: return
+        for (domain in blockedWebDomains) {
+            if (detectedUrl.contains(domain)) {
+                if (AppPreferences.isTemporarilyWhitelisted(packageName)) return
+
+                val now = System.currentTimeMillis()
+                if (domain == lastBlockedPkg && (now - lastBlockedTime) < 500) return
+
+                lastBlockedPkg = domain
+                lastBlockedTime = now
+
+                Log.i(TAG, "🛑 Intercepted blocked web domain in browser: $domain")
+                vibratePhone()
+                BlockOverlayManager.showOverlay(this, "Web ($domain)") {
+                    clearDebounce()
+                }
+                break
+            }
+        }
+    }
+
+    private fun findUrlInNode(node: AccessibilityNodeInfo?): String? {
+        if (node == null) return null
+        val text = node.text?.toString()
+        if (text != null && (text.contains(".") || text.startsWith("http"))) {
+            for (domain in blockedWebDomains) {
+                if (text.contains(domain, ignoreCase = true)) {
+                    return text
+                }
+            }
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            val found = findUrlInNode(child)
+            if (found != null) return found
+        }
+        return null
     }
 
     private fun isSleepInterval(interval: FocusInterval): Boolean {
@@ -117,6 +194,8 @@ class FocusAccessibilityService : AccessibilityService() {
                label.contains("descanso") ||
                label.contains("sueño") ||
                label.contains("noche") ||
+               label.contains("sleep") ||
+               label.contains("rest") ||
                (interval.startHour >= 21 && interval.endHour <= 8)
     }
 
@@ -124,7 +203,6 @@ class FocusAccessibilityService : AccessibilityService() {
         val activeInterval = AppPreferences.getActiveScheduledInterval() ?: return
         if (!isSleepInterval(activeInterval)) return
 
-        // If user is inside launcher or our app or systemui, do not force popup immediately
         if (packageName == this.packageName ||
             packageName == "android" ||
             packageName == "com.android.systemui" ||
@@ -133,14 +211,12 @@ class FocusAccessibilityService : AccessibilityService() {
             return
         }
 
-        // If sleep nudge can be shown (e.g. initial or every 10 min after snooze)
         if (SleepOverlayManager.canShowNudge() && !BlockOverlayManager.isShowing()) {
             SleepOverlayManager.showSleepNudge(this)
         }
     }
 
     private fun checkAndBlockPackage(packageName: String) {
-        // If current app is launcher or system UI or our own app, dismiss overlay if showing
         if (packageName == this.packageName ||
             packageName == "android" ||
             packageName == "com.android.systemui" ||
@@ -160,7 +236,6 @@ class FocusAccessibilityService : AccessibilityService() {
             // Ignore
         }
 
-        // Check if focus session is active, a scheduled interval is active, or always-block is enabled
         val isScheduledActive = AppPreferences.isAnyScheduledIntervalActive()
         val isFocusActive = AppPreferences.isFocusActive() || isScheduledActive
         val isAlwaysBlock = AppPreferences.isAlwaysBlockEnabled()
@@ -172,7 +247,6 @@ class FocusAccessibilityService : AccessibilityService() {
             return
         }
 
-        // Check if the opened app is in the blocked list
         val isBlocked = AppPreferences.isAppBlocked(packageName)
         if (!isBlocked) {
             if (BlockOverlayManager.isShowing()) {
@@ -181,7 +255,6 @@ class FocusAccessibilityService : AccessibilityService() {
             return
         }
 
-        // Check if user has temporary whitelist grace period
         if (AppPreferences.isTemporarilyWhitelisted(packageName)) {
             if (BlockOverlayManager.isShowing()) {
                 BlockOverlayManager.hideOverlay(this)
@@ -189,7 +262,6 @@ class FocusAccessibilityService : AccessibilityService() {
             return
         }
 
-        // If overlay is already showing for this package, return
         if (BlockOverlayManager.isShowing() && lastBlockedPkg == packageName) {
             return
         }
@@ -203,10 +275,8 @@ class FocusAccessibilityService : AccessibilityService() {
 
         Log.i(TAG, "🛑 Displaying breathing overlay for blocked app: $packageName")
 
-        // 1. Trigger light haptic feedback
         vibratePhone()
 
-        // 2. Display the breathing overlay on top of the window
         BlockOverlayManager.showOverlay(this, packageName) {
             clearDebounce()
         }

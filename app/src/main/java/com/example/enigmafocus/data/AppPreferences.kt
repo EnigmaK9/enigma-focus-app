@@ -21,6 +21,8 @@ object AppPreferences {
     private const val KEY_TEMP_WHITELIST_EXPIRY = "temp_whitelist_expiry"
     private const val KEY_TEMP_WHITELIST_PKG = "temp_whitelist_pkg"
     private const val KEY_FOCUS_INTERVALS = "focus_intervals"
+    private const val KEY_APP_LANGUAGE = "app_language"
+    private const val KEY_ANTI_IMPULSE = "anti_impulse_cooldown"
 
     // Default distraction packages
     val DEFAULT_POPULAR_PACKAGES = setOf(
@@ -36,7 +38,7 @@ object AppPreferences {
     val DEFAULT_SCHEDULED_INTERVALS = listOf(
         FocusInterval(
             id = "default_workday_1",
-            label = "Jornada Laboral",
+            label = "Workday Shift",
             startHour = 7,
             startMinute = 30,
             endHour = 16,
@@ -46,7 +48,7 @@ object AppPreferences {
         ),
         FocusInterval(
             id = "default_sleep_2",
-            label = "Descanso / Dormir",
+            label = "Rest / Sleep",
             startHour = 22,
             startMinute = 30,
             endHour = 6,
@@ -81,6 +83,12 @@ object AppPreferences {
     private val _strictModeFlow = MutableStateFlow(false)
     val strictModeFlow: StateFlow<Boolean> = _strictModeFlow.asStateFlow()
 
+    private val _languageFlow = MutableStateFlow("en")
+    val languageFlow: StateFlow<String> = _languageFlow.asStateFlow()
+
+    private val _antiImpulseFlow = MutableStateFlow(false)
+    val antiImpulseFlow: StateFlow<Boolean> = _antiImpulseFlow.asStateFlow()
+
     private val _intervalsFlow = MutableStateFlow<List<FocusInterval>>(emptyList())
     val intervalsFlow: StateFlow<List<FocusInterval>> = _intervalsFlow.asStateFlow()
 
@@ -97,6 +105,12 @@ object AppPreferences {
         if (!prefs.contains(KEY_AUTO_GRAYSCALE)) {
             prefs.edit().putBoolean(KEY_AUTO_GRAYSCALE, true).apply()
         }
+        if (!prefs.contains(KEY_APP_LANGUAGE)) {
+            prefs.edit().putString(KEY_APP_LANGUAGE, "en").apply() // English by default
+        }
+        if (!prefs.contains(KEY_ANTI_IMPULSE)) {
+            prefs.edit().putBoolean(KEY_ANTI_IMPULSE, false).apply()
+        }
         if (!prefs.contains("initial_grayscale_applied")) {
             prefs.edit().putBoolean("initial_grayscale_applied", true).apply()
             GrayscaleManager.setGrayscaleEnabled(context, true)
@@ -107,8 +121,32 @@ object AppPreferences {
         _autoGrayscaleFlow.value = prefs.getBoolean(KEY_AUTO_GRAYSCALE, true)
         _alwaysBlockFlow.value = prefs.getBoolean(KEY_ALWAYS_BLOCK, true)
         _strictModeFlow.value = prefs.getBoolean(KEY_STRICT_MODE, false)
+        _languageFlow.value = prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
+        _antiImpulseFlow.value = prefs.getBoolean(KEY_ANTI_IMPULSE, false)
 
         loadIntervals()
+    }
+
+    fun getAppLanguage(): String {
+        return prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
+    }
+
+    fun isEnglish(): Boolean {
+        return getAppLanguage() == "en"
+    }
+
+    fun setAppLanguage(language: String) {
+        prefs.edit().putString(KEY_APP_LANGUAGE, language).apply()
+        _languageFlow.value = language
+    }
+
+    fun isAntiImpulseEnabled(): Boolean {
+        return prefs.getBoolean(KEY_ANTI_IMPULSE, false)
+    }
+
+    fun setAntiImpulseEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ANTI_IMPULSE, enabled).apply()
+        _antiImpulseFlow.value = enabled
     }
 
     fun getBlockedPackages(): Set<String> {
@@ -169,7 +207,7 @@ object AppPreferences {
     }
 
     fun isAutoGrayscaleEnabled(): Boolean {
-        return prefs.getBoolean(KEY_AUTO_GRAYSCALE, false)
+        return prefs.getBoolean(KEY_AUTO_GRAYSCALE, true)
     }
 
     fun setAutoGrayscaleEnabled(context: Context, enabled: Boolean) {
@@ -181,7 +219,7 @@ object AppPreferences {
     }
 
     fun isAlwaysBlockEnabled(): Boolean {
-        return prefs.getBoolean(KEY_ALWAYS_BLOCK, false)
+        return prefs.getBoolean(KEY_ALWAYS_BLOCK, true)
     }
 
     fun setAlwaysBlockEnabled(enabled: Boolean) {

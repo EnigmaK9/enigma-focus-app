@@ -8,6 +8,7 @@ import com.example.enigmafocus.data.AppInfo
 import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.data.FocusInterval
 import com.example.enigmafocus.data.InstalledAppsRepository
+import com.example.enigmafocus.data.JsonConfigManager
 import com.example.enigmafocus.manager.FocusSessionManager
 import com.example.enigmafocus.manager.GrayscaleManager
 import com.example.enigmafocus.service.FocusAccessibilityService
@@ -30,6 +31,8 @@ data class MainUiState(
     val isAutoGrayscaleEnabled: Boolean = true,
     val isAlwaysBlockEnabled: Boolean = true,
     val isStrictModeEnabled: Boolean = false,
+    val isEnglish: Boolean = true,
+    val isAntiImpulseEnabled: Boolean = false,
     val scheduledIntervals: List<FocusInterval> = emptyList(),
     val activeScheduledInterval: FocusInterval? = null,
     val installedApps: List<AppInfo> = emptyList(),
@@ -85,6 +88,18 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         viewModelScope.launch {
+            AppPreferences.languageFlow.collect { lang ->
+                _uiState.update { it.copy(isEnglish = lang == "en") }
+            }
+        }
+
+        viewModelScope.launch {
+            AppPreferences.antiImpulseFlow.collect { anti ->
+                _uiState.update { it.copy(isAntiImpulseEnabled = anti) }
+            }
+        }
+
+        viewModelScope.launch {
             AppPreferences.intervalsFlow.collect { intervals ->
                 val active = AppPreferences.getActiveScheduledInterval()
                 _uiState.update { it.copy(scheduledIntervals = intervals, activeScheduledInterval = active) }
@@ -114,6 +129,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         val autoGray = AppPreferences.isAutoGrayscaleEnabled()
         val alwaysBlock = AppPreferences.isAlwaysBlockEnabled()
         val strict = AppPreferences.isStrictModeEnabled()
+        val isEng = AppPreferences.isEnglish()
+        val antiImpulse = AppPreferences.isAntiImpulseEnabled()
         val intervals = AppPreferences.getIntervals()
         val activeInterval = AppPreferences.getActiveScheduledInterval()
 
@@ -127,6 +144,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
                 isAutoGrayscaleEnabled = autoGray,
                 isAlwaysBlockEnabled = alwaysBlock,
                 isStrictModeEnabled = strict,
+                isEnglish = isEng,
+                isAntiImpulseEnabled = antiImpulse,
                 scheduledIntervals = intervals,
                 activeScheduledInterval = activeInterval
             )
@@ -192,6 +211,14 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         AppPreferences.setStrictModeEnabled(enabled)
     }
 
+    fun setLanguage(lang: String) {
+        AppPreferences.setAppLanguage(lang)
+    }
+
+    fun setAntiImpulse(enabled: Boolean) {
+        AppPreferences.setAntiImpulseEnabled(enabled)
+    }
+
     fun toggleInterval(id: String) {
         AppPreferences.toggleIntervalEnabled(id)
     }
@@ -202,6 +229,18 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
     fun removeInterval(id: String) {
         AppPreferences.removeInterval(id)
+    }
+
+    fun exportConfigJson(): String {
+        return JsonConfigManager.exportConfigJson()
+    }
+
+    fun importConfigJson(jsonString: String): Boolean {
+        val success = JsonConfigManager.importConfigJson(jsonString)
+        if (success) {
+            refreshState()
+        }
+        return success
     }
 
     fun toggleAppBlock(packageName: String) {

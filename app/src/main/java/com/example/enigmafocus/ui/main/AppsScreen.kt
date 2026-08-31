@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -55,12 +56,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.enigmafocus.data.AppInfo
+import com.example.enigmafocus.data.AppStrings
 
 @Composable
 fun AppsScreen(
     state: MainUiState,
     viewModel: MainScreenViewModel
 ) {
+    val isEng = state.isEnglish
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -73,14 +77,14 @@ fun AppsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
-            placeholder = { Text("Buscar aplicación...", color = Color(0xFF888888)) },
+            placeholder = { Text(AppStrings.get("search_placeholder", isEng), color = Color(0xFF888888)) },
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF888888))
             },
             trailingIcon = {
                 if (state.searchQuery.isNotEmpty()) {
                     IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Limpiar", tint = Color(0xFF888888))
+                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color(0xFF888888))
                     }
                 }
             },
@@ -121,14 +125,14 @@ fun AppsScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Redes Sociales Principales",
+                            text = AppStrings.get("popular_card_title", isEng),
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             fontSize = 14.sp
                         )
                     }
                     Text(
-                        text = "Instagram, Reddit, TikTok, X, YouTube",
+                        text = AppStrings.get("popular_card_subtitle", isEng),
                         color = Color(0xFF888888),
                         fontSize = 11.sp
                     )
@@ -141,7 +145,7 @@ fun AppsScreen(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
-                        Text("Bloquear", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(if (isEng) "Block All" else "Bloquear", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(6.dp))
                     OutlinedButton(
@@ -149,70 +153,90 @@ fun AppsScreen(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
-                        Text("Liberar", fontSize = 12.sp, color = Color(0xFFB0B0B0))
+                        Text(if (isEng) "Unblock" else "Liberar", fontSize = 12.sp, color = Color(0xFFB0B0B0))
                     }
                 }
             }
         }
 
-        // App list count header
+        // Browser Interception Information Banner
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF16231D)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Language, contentDescription = null, tint = Color(0xFF81C784), modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(AppStrings.get("browser_url_blocking_title", isEng), color = Color(0xFF81C784), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(AppStrings.get("browser_url_blocking_desc", isEng), color = Color(0xFFB0B0B0), fontSize = 10.sp)
+                }
+            }
+        }
+
+        // Header info
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             val blockedCount = state.installedApps.count { it.isBlocked }
             Text(
-                text = "APLICACIONES INSTALADAS (${state.filteredApps.size})",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF888888)
-            )
-            Text(
-                text = "$blockedCount bloqueadas",
-                fontSize = 12.sp,
+                text = if (isEng) "$blockedCount apps blocked" else "$blockedCount apps bloqueadas",
+                style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF81C784),
                 fontWeight = FontWeight.SemiBold
             )
+            Text(
+                text = if (isEng) "${state.filteredApps.size} total apps" else "${state.filteredApps.size} apps en total",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF888888)
+            )
         }
 
+        // App list
         if (state.isLoadingApps) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Color(0xFF4CAF50))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Color(0xFF4CAF50))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(if (isEng) "Loading applications..." else "Cargando aplicaciones...", color = Color(0xFF888888))
+                }
             }
         } else if (state.filteredApps.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No se encontraron aplicaciones",
+                    text = if (isEng) "No applications found" else "No se encontraron aplicaciones",
                     color = Color(0xFF888888),
-                    fontSize = 14.sp
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
-                items(state.filteredApps, key = { it.packageName }) { app ->
-                    AppItemCard(
+                items(
+                    items = state.filteredApps,
+                    key = { it.packageName }
+                ) { app ->
+                    AppItemRow(
                         app = app,
                         onToggle = { viewModel.toggleAppBlock(app.packageName) }
                     )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
         }
@@ -220,62 +244,71 @@ fun AppsScreen(
 }
 
 @Composable
-fun AppItemCard(
+fun AppItemRow(
     app: AppInfo,
     onToggle: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(vertical = 4.dp)
             .clickable { onToggle() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (app.isBlocked) Color(0xFF281C1C) else Color(0xFF1E1E1E)
+            containerColor = if (app.isBlocked) Color(0xFF241B1B) else Color(0xFF1E1E1E)
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // App icon or fallback
-            AppIconImage(drawable = app.icon, appName = app.name)
+            // App Icon
+            val iconBitmap = remember(app.packageName) {
+                app.icon?.let { drawableToBitmap(it) }
+            }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            if (iconBitmap != null) {
+                Image(
+                    bitmap = iconBitmap.asImageBitmap(),
+                    contentDescription = app.name,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF333333)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Apps,
+                        contentDescription = null,
+                        tint = Color(0xFF888888),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = app.name,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (app.isPopularDistraction) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFFE65100))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "Distracción",
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
+                Text(
+                    text = app.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (app.isBlocked) Color(0xFFFFCDD2) else Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     text = app.packageName,
-                    color = Color(0xFF757575),
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF777777),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -288,62 +321,26 @@ fun AppItemCard(
                 onCheckedChange = { onToggle() },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFFE57373),
-                    uncheckedThumbColor = Color(0xFF757575),
-                    uncheckedTrackColor = Color(0xFF2C2C2C)
+                    checkedTrackColor = Color(0xFFE53935),
+                    uncheckedThumbColor = Color(0xFF888888),
+                    uncheckedTrackColor = Color(0xFF333333)
                 )
             )
         }
     }
 }
 
-@Composable
-fun AppIconImage(
-    drawable: Drawable?,
-    appName: String
-) {
-    val bitmap = remember(drawable) {
-        drawable?.let { d ->
-            try {
-                if (d is BitmapDrawable && d.bitmap != null) {
-                    d.bitmap
-                } else {
-                    val width = if (d.intrinsicWidth > 0) d.intrinsicWidth else 96
-                    val height = if (d.intrinsicHeight > 0) d.intrinsicHeight else 96
-                    val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    val canvas = Canvas(bmp)
-                    d.setBounds(0, 0, canvas.width, canvas.height)
-                    d.draw(canvas)
-                    bmp
-                }
-            } catch (e: Exception) {
-                null
-            }
-        }
+private fun drawableToBitmap(drawable: Drawable): Bitmap {
+    if (drawable is BitmapDrawable && drawable.bitmap != null) {
+        return drawable.bitmap
     }
-
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = appName,
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(8.dp))
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF2C2C2C)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = appName.take(1).uppercase(),
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-        }
-    }
+    val bitmap = Bitmap.createBitmap(
+        if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 96,
+        if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 96,
+        Bitmap.Config.ARGB_8888
+    )
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, canvas.width, canvas.height)
+    drawable.draw(canvas)
+    return bitmap
 }

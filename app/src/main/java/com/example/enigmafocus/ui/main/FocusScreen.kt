@@ -69,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.enigmafocus.data.AppStrings
 import com.example.enigmafocus.data.FocusInterval
 import java.util.Calendar
 import java.util.Locale
@@ -83,6 +84,7 @@ fun FocusScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val isEng = state.isEnglish
 
     var intervalToEdit by remember { mutableStateOf<FocusInterval?>(null) }
     var isCreatingNewInterval by remember { mutableStateOf(false) }
@@ -117,13 +119,13 @@ fun FocusScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (!state.hasSecureSettingsPermission) "Permiso ADB pendiente para Escala de Grises" else "Accesibilidad desactivada",
+                            text = if (!state.hasSecureSettingsPermission) (if (isEng) "ADB Permission required for Grayscale" else "Permiso ADB pendiente para Escala de Grises") else (if (isEng) "Accessibility Service disabled" else "Accesibilidad desactivada"),
                             color = Color(0xFFFF8A80),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                         Text(
-                            text = "Toca para revisar la configuración de permisos.",
+                            text = if (isEng) "Tap to open system settings & diagnostics." else "Toca para revisar la configuración de permisos.",
                             color = Color(0xFFE0E0E0),
                             fontSize = 12.sp
                         )
@@ -154,7 +156,7 @@ fun FocusScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Intervalo Programado Activo",
+                            text = AppStrings.get("active_interval_alert", isEng),
                             color = Color(0xFF81C784),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -205,7 +207,7 @@ fun FocusScreen(
                                     String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
                                 }
                             } else {
-                                "ACTIVO"
+                                "ACTIVE"
                             }
                             Text(
                                 text = formattedTime,
@@ -214,7 +216,7 @@ fun FocusScreen(
                                 color = Color.White
                             )
                             Text(
-                                text = "En concentración",
+                                text = AppStrings.get("in_concentration", isEng),
                                 fontSize = 12.sp,
                                 color = Color(0xFFA5D6A7)
                             )
@@ -246,7 +248,7 @@ fun FocusScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = if (state.isFocusActive) "Sesión de Enfoque Activa" else "Sesión Manual Inmediata",
+                    text = if (state.isFocusActive) AppStrings.get("focus_active_title", isEng) else AppStrings.get("focus_inactive_title", isEng),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -254,9 +256,9 @@ fun FocusScreen(
 
                 Text(
                     text = if (state.isFocusActive)
-                        "Instagram, Reddit y distracciones bloqueadas."
+                        AppStrings.get("focus_active_subtitle", isEng)
                     else
-                        "Elige la duración o programa horarios automáticos abajo.",
+                        AppStrings.get("focus_inactive_subtitle", isEng),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFFB0B0B0),
                     textAlign = TextAlign.Center,
@@ -278,16 +280,17 @@ fun FocusScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Stop, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Detener Sesión", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(AppStrings.get("btn_stop_session", isEng), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 } else {
                     val buttonText = if (state.selectedDurationMinutes >= 60) {
                         val h = state.selectedDurationMinutes / 60
                         val m = state.selectedDurationMinutes % 60
-                        if (m == 0) "Iniciar Sesión ($h Horas)" else "Iniciar Sesión ($h h $m m)"
+                        val hrWord = if (isEng) (if (h == 1) "Hour" else "Hours") else (if (h == 1) "Hora" else "Horas")
+                        if (m == 0) "${AppStrings.get("btn_start_session", isEng)} ($h $hrWord)" else "${AppStrings.get("btn_start_session", isEng)} ($h h $m m)"
                     } else {
-                        "Iniciar Sesión (${state.selectedDurationMinutes} min)"
+                        "${AppStrings.get("btn_start_session", isEng)} (${state.selectedDurationMinutes} min)"
                     }
 
                     Button(
@@ -318,10 +321,10 @@ fun FocusScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf(
-                        25 to "25 min",
-                        60 to "1 hora",
-                        240 to "4 horas",
-                        540 to "9h Jornada"
+                        25 to AppStrings.get("min_25", isEng),
+                        60 to AppStrings.get("hr_1", isEng),
+                        240 to AppStrings.get("hr_4", isEng),
+                        540 to AppStrings.get("hr_9_workday", isEng)
                     ).forEach { (mins, label) ->
                         FilterChip(
                             selected = state.selectedDurationMinutes == mins,
@@ -342,7 +345,7 @@ fun FocusScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Scheduled Focus Intervals Card (Multiple work shifts / daily schedules)
+        // Scheduled Focus Intervals Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -356,13 +359,13 @@ fun FocusScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Horarios e Intervalos",
+                            text = AppStrings.get("intervals_card_title", isEng),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         Text(
-                            text = "Bloqueo automático en tus horas de trabajo",
+                            text = AppStrings.get("intervals_card_subtitle", isEng),
                             color = Color(0xFF8E8E8E),
                             fontSize = 12.sp
                         )
@@ -371,7 +374,7 @@ fun FocusScreen(
                     IconButton(onClick = { isCreatingNewInterval = true }) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Añadir intervalo",
+                            contentDescription = AppStrings.get("btn_add_interval", isEng),
                             tint = Color(0xFF81C784)
                         )
                     }
@@ -379,100 +382,91 @@ fun FocusScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                if (state.scheduledIntervals.isEmpty()) {
-                    Text(
-                        text = "No tienes intervalos programados. Pulsa + para añadir uno (ej. 07:00 a 16:30).",
-                        color = Color(0xFF757575),
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                } else {
-                    state.scheduledIntervals.forEach { interval ->
-                        val isCurrentActive = interval.isCurrentlyActive()
-                        Card(
+                state.scheduledIntervals.forEach { interval ->
+                    val isCurrentActive = interval.isCurrentlyActive()
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isCurrentActive) Color(0xFF183D29) else Color(0xFF282828)
+                        )
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isCurrentActive) Color(0xFF183D29) else Color(0xFF282828)
-                            )
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = interval.label,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White,
-                                            fontSize = 15.sp
-                                        )
-                                        if (isCurrentActive) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(4.dp))
-                                                    .background(Color(0xFF2E7D32))
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    text = "EN CURSO",
-                                                    color = Color.White,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = interval.label,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        fontSize = 15.sp
+                                    )
+                                    if (isCurrentActive) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(Color(0xFF2E7D32))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = AppStrings.get("badge_in_progress", isEng),
+                                                color = Color.White,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         }
                                     }
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.Alarm,
-                                            contentDescription = null,
-                                            tint = if (isCurrentActive) Color(0xFF81C784) else Color(0xFFB0B0B0),
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = interval.formattedTimeRange(),
-                                            color = if (isCurrentActive) Color(0xFF81C784) else Color(0xFFE0E0E0),
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = "• ${interval.formattedDays()}",
-                                            color = Color(0xFF9E9E9E),
-                                            fontSize = 12.sp
-                                        )
-                                    }
                                 }
 
-                                IconButton(onClick = { intervalToEdit = interval }) {
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Editar",
-                                        tint = Color(0xFFB0B0B0),
-                                        modifier = Modifier.size(18.dp)
+                                        imageVector = Icons.Default.Alarm,
+                                        contentDescription = null,
+                                        tint = if (isCurrentActive) Color(0xFF81C784) else Color(0xFFB0B0B0),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = interval.formattedTimeRange(),
+                                        color = if (isCurrentActive) Color(0xFF81C784) else Color(0xFFE0E0E0),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "• ${interval.formattedDays()}",
+                                        color = Color(0xFF9E9E9E),
+                                        fontSize = 12.sp
                                     )
                                 }
+                            }
 
-                                Switch(
-                                    checked = interval.isEnabled,
-                                    onCheckedChange = { viewModel.toggleInterval(interval.id) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = Color(0xFF4CAF50)
-                                    )
+                            IconButton(onClick = { intervalToEdit = interval }) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = Color(0xFFB0B0B0),
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
+
+                            Switch(
+                                checked = interval.isEnabled,
+                                onCheckedChange = { viewModel.toggleInterval(interval.id) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF4CAF50)
+                                )
+                            )
                         }
                     }
                 }
@@ -486,7 +480,7 @@ fun FocusScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF81C784))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Añadir Horario / Intervalo", color = Color(0xFF81C784))
+                    Text(AppStrings.get("btn_add_interval", isEng), color = Color(0xFF81C784))
                 }
             }
         }
@@ -501,7 +495,7 @@ fun FocusScreen(
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
                 Text(
-                    text = "Controles del Teléfono",
+                    text = AppStrings.get("phone_controls_title", isEng),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -532,13 +526,13 @@ fun FocusScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Modo Escala de Grises",
+                            text = AppStrings.get("grayscale_mode_title", isEng),
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                             fontSize = 15.sp
                         )
                         Text(
-                            text = if (state.isGrayscaleActive) "Pantalla en Blanco y Negro" else "Pantalla a Todo Color",
+                            text = if (state.isGrayscaleActive) AppStrings.get("grayscale_mode_active", isEng) else AppStrings.get("grayscale_mode_inactive", isEng),
                             color = if (state.isGrayscaleActive) Color(0xFF81C784) else Color(0xFF8E8E8E),
                             fontSize = 12.sp,
                             fontWeight = if (state.isGrayscaleActive) FontWeight.Bold else FontWeight.Normal
@@ -584,13 +578,13 @@ fun FocusScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Auto Escala de Grises en Sesión",
+                            text = AppStrings.get("auto_grayscale_title", isEng),
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                             fontSize = 15.sp
                         )
                         Text(
-                            text = if (state.isAutoGrayscaleEnabled) "Se activa en blanco y negro al bloquear" else "Mantener a color durante la sesión",
+                            text = AppStrings.get("auto_grayscale_desc", isEng),
                             color = Color(0xFF8E8E8E),
                             fontSize = 12.sp
                         )
@@ -629,13 +623,13 @@ fun FocusScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Modo Estricto (Sin Pausas)",
+                            text = AppStrings.get("strict_mode_title", isEng),
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                             fontSize = 15.sp
                         )
                         Text(
-                            text = if (state.isStrictModeEnabled) "Bloqueo total sin opción a usar 1 min" else "Permite desbloqueo de 1 min tras respirar",
+                            text = AppStrings.get("strict_mode_desc", isEng),
                             color = Color(0xFF8E8E8E),
                             fontSize = 12.sp
                         )
@@ -674,13 +668,13 @@ fun FocusScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Bloqueo Siempre Activo",
+                            text = AppStrings.get("always_block_title", isEng),
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                             fontSize = 15.sp
                         )
                         Text(
-                            text = "Bloquear continuamente las 24 horas",
+                            text = AppStrings.get("always_block_desc", isEng),
                             color = Color(0xFF8E8E8E),
                             fontSize = 12.sp
                         )
@@ -703,9 +697,9 @@ fun FocusScreen(
     // Interval Edit / Create Dialog
     if (isCreatingNewInterval || intervalToEdit != null) {
         val initial = intervalToEdit ?: FocusInterval(
-            label = "Nuevo Horario",
+            label = if (isEng) "Work Schedule" else "Nuevo Horario",
             startHour = 7,
-            startMinute = 0,
+            startMinute = 30,
             endHour = 16,
             endMinute = 30,
             isEnabled = true
@@ -719,13 +713,13 @@ fun FocusScreen(
         var selectedDays by remember { mutableStateOf(initial.daysOfWeek) }
 
         val daysList = listOf(
-            Calendar.MONDAY to "Lun",
-            Calendar.TUESDAY to "Mar",
-            Calendar.WEDNESDAY to "Mié",
-            Calendar.THURSDAY to "Jue",
-            Calendar.FRIDAY to "Vie",
-            Calendar.SATURDAY to "Sáb",
-            Calendar.SUNDAY to "Dom"
+            Calendar.MONDAY to (if (isEng) "Mon" else "Lun"),
+            Calendar.TUESDAY to (if (isEng) "Tue" else "Mar"),
+            Calendar.WEDNESDAY to (if (isEng) "Wed" else "Mié"),
+            Calendar.THURSDAY to (if (isEng) "Thu" else "Jue"),
+            Calendar.FRIDAY to (if (isEng) "Fri" else "Vie"),
+            Calendar.SATURDAY to (if (isEng) "Sat" else "Sáb"),
+            Calendar.SUNDAY to (if (isEng) "Sun" else "Dom")
         )
 
         AlertDialog(
@@ -735,7 +729,7 @@ fun FocusScreen(
             },
             title = {
                 Text(
-                    text = if (intervalToEdit != null) "Editar Intervalo" else "Nuevo Intervalo",
+                    text = if (intervalToEdit != null) (if (isEng) "Edit Interval" else "Editar Intervalo") else (if (isEng) "New Interval" else "Nuevo Intervalo"),
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -745,7 +739,7 @@ fun FocusScreen(
                     OutlinedTextField(
                         value = label,
                         onValueChange = { label = it },
-                        label = { Text("Nombre (ej. Jornada Laboral)") },
+                        label = { Text(if (isEng) "Label (e.g. Workday)" else "Nombre (ej. Jornada)") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF4CAF50),
@@ -757,14 +751,13 @@ fun FocusScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("Horario de bloqueo:", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(if (isEng) "Time Range:" else "Horario de bloqueo:", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Start Time Button
                         OutlinedButton(
                             onClick = {
                                 TimePickerDialog(
@@ -782,7 +775,7 @@ fun FocusScreen(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Inicio", fontSize = 11.sp, color = Color(0xFFB0B0B0))
+                                Text(if (isEng) "Start" else "Inicio", fontSize = 11.sp, color = Color(0xFFB0B0B0))
                                 Text(
                                     String.format(Locale.getDefault(), "%02d:%02d", startHour, startMinute),
                                     fontSize = 16.sp,
@@ -794,7 +787,6 @@ fun FocusScreen(
 
                         Spacer(modifier = Modifier.width(12.dp))
 
-                        // End Time Button
                         OutlinedButton(
                             onClick = {
                                 TimePickerDialog(
@@ -812,7 +804,7 @@ fun FocusScreen(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Fin", fontSize = 11.sp, color = Color(0xFFB0B0B0))
+                                Text(if (isEng) "End" else "Fin", fontSize = 11.sp, color = Color(0xFFB0B0B0))
                                 Text(
                                     String.format(Locale.getDefault(), "%02d:%02d", endHour, endMinute),
                                     fontSize = 16.sp,
@@ -825,7 +817,7 @@ fun FocusScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("Días activos:", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(if (isEng) "Active Days:" else "Días activos:", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     FlowRow(
@@ -859,7 +851,7 @@ fun FocusScreen(
                 Button(
                     onClick = {
                         val finalInterval = initial.copy(
-                            label = label.ifBlank { "Horario de Trabajo" },
+                            label = label.ifBlank { if (isEng) "Workday Shift" else "Jornada Laboral" },
                             startHour = startHour,
                             startMinute = startMinute,
                             endHour = endHour,
@@ -873,7 +865,7 @@ fun FocusScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                 ) {
-                    Text("Guardar", color = Color.White)
+                    Text(if (isEng) "Save" else "Guardar", color = Color.White)
                 }
             },
             dismissButton = {
@@ -886,7 +878,7 @@ fun FocusScreen(
                                 intervalToEdit = null
                             }
                         ) {
-                            Text("Eliminar", color = Color(0xFFFF8A80))
+                            Text(if (isEng) "Delete" else "Eliminar", color = Color(0xFFFF8A80))
                         }
                     }
                     TextButton(
@@ -895,7 +887,7 @@ fun FocusScreen(
                             intervalToEdit = null
                         }
                     ) {
-                        Text("Cancelar", color = Color(0xFFB0B0B0))
+                        Text(if (isEng) "Cancel" else "Cancelar", color = Color(0xFFB0B0B0))
                     }
                 }
             },

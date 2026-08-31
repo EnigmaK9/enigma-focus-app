@@ -28,8 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Brightness3
-import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -60,6 +58,8 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.example.enigmafocus.data.AppPreferences
+import com.example.enigmafocus.data.AppStrings
 import com.example.enigmafocus.theme.EnigmaFocusTheme
 
 object SleepOverlayManager {
@@ -120,12 +120,15 @@ object SleepOverlayManager {
             val lifecycleOwner = SleepLifecycleOwner()
             currentLifecycleOwner = lifecycleOwner
 
+            val isEng = AppPreferences.isEnglish()
+
             val composeView = ComposeView(service).apply {
                 setViewTreeLifecycleOwner(lifecycleOwner)
                 setViewTreeSavedStateRegistryOwner(lifecycleOwner)
                 setContent {
                     EnigmaFocusTheme(darkTheme = true) {
                         SleepNudgeScreen(
+                            isEng = isEng,
                             onGoToSleep = {
                                 dismiss(service)
                                 service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
@@ -171,6 +174,7 @@ object SleepOverlayManager {
 
 @Composable
 fun SleepNudgeScreen(
+    isEng: Boolean = true,
     onGoToSleep: () -> Unit,
     onSnooze: () -> Unit
 ) {
@@ -187,7 +191,7 @@ fun SleepNudgeScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xEB070A12) // Semi-transparent dark night background
+        color = Color(0xEB070A12)
     ) {
         Box(
             modifier = Modifier
@@ -224,7 +228,7 @@ fun SleepNudgeScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Bedtime,
-                            contentDescription = "Hora de dormir",
+                            contentDescription = "Sleep",
                             tint = Color(0xFFFFE082),
                             modifier = Modifier.size(48.dp)
                         )
@@ -233,7 +237,7 @@ fun SleepNudgeScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
-                        text = "¡Es hora de ir a dormir! 🌙",
+                        text = AppStrings.get("sleep_nudge_title", isEng),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -243,7 +247,7 @@ fun SleepNudgeScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "Tu horario de descanso (10:30 PM - 6:30 AM) está activo.\n\nLa luz de la pantalla reduce la melatonina y altera tu descanso. Deja el teléfono y dale a tu cuerpo la noche que merece.",
+                        text = AppStrings.get("sleep_nudge_body", isEng),
                         fontSize = 14.sp,
                         color = Color(0xFFC5CAE9),
                         textAlign = TextAlign.Center,
@@ -264,7 +268,7 @@ fun SleepNudgeScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.PowerSettingsNew, contentDescription = null, tint = Color.White)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Apagar pantalla e ir a dormir", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(AppStrings.get("btn_sleep_lock", isEng), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
 
@@ -278,7 +282,7 @@ fun SleepNudgeScreen(
                             .height(46.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Recordármelo en 10 min", fontSize = 13.sp, color = Color(0xFF9FA8DA))
+                        Text(AppStrings.get("btn_sleep_snooze", isEng), fontSize = 13.sp, color = Color(0xFF9FA8DA))
                     }
                 }
             }

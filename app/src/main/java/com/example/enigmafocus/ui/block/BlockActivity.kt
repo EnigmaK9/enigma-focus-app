@@ -5,12 +5,15 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,17 +26,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -57,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.enigmafocus.data.AppPreferences
+import com.example.enigmafocus.data.AppStrings
 import com.example.enigmafocus.service.FocusAccessibilityService
 import com.example.enigmafocus.theme.EnigmaFocusTheme
 import kotlinx.coroutines.delay
@@ -64,7 +70,7 @@ import kotlinx.coroutines.delay
 class BlockActivity : ComponentActivity() {
 
     companion object {
-        const val EXTRA_BLOCKED_PACKAGE = "extra_blocked_package"
+        const val EXTRA_BLOCKED_PACKAGE = "blocked_package"
         var isBlockScreenShowing = false
     }
 
@@ -74,7 +80,7 @@ class BlockActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        isBlockScreenShowing = true
+        AppPreferences.init(applicationContext)
 
         updatePackageFromIntent(intent)
 
@@ -160,92 +166,90 @@ fun DirectBreathingBlockScreen(
     onGoHome: () -> Unit,
     onUnlockTemporary: () -> Unit
 ) {
+    val isEng = AppPreferences.isEnglish()
     var secondsLeft by remember { mutableIntStateOf(10) }
-    var breathingPhase by remember { mutableStateOf("Inhala profundo...") }
+    var breathingPhase by remember { mutableStateOf(if (isEng) "Inhale slowly" else "Inhala lentamente") }
 
     LaunchedEffect(Unit) {
+        secondsLeft = 10
         while (secondsLeft > 0) {
-            breathingPhase = when {
-                secondsLeft in 8..10 -> "Inhala profundamente..."
-                secondsLeft in 5..7 -> "Sostén el aire..."
-                else -> "Exhala despacio y relaja..."
+            breathingPhase = when (secondsLeft) {
+                in 8..10 -> if (isEng) "Inhale deeply through your nose" else "Inhala profundamente por la nariz"
+                in 5..7 -> if (isEng) "Hold your breath calmly" else "Sostén el aire con calma"
+                in 1..4 -> if (isEng) "Exhale slowly and release tension" else "Exhala suavemente y suelta tensión"
+                else -> if (isEng) "Ready to focus" else "Listo para continuar"
             }
             delay(1000)
             secondsLeft--
         }
-        breathingPhase = "¡Excelente! Mente despejada."
+        breathingPhase = if (isEng) "Take a conscious choice" else "Toma una decisión consciente"
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "breatheAnimation")
+    val infiniteTransition = rememberInfiniteTransition(label = "breathe")
     val breatheScale by infiniteTransition.animateFloat(
-        initialValue = 0.85f,
-        targetValue = 1.25f,
+        initialValue = 0.88f,
+        targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3500, easing = FastOutSlowInEasing),
+            animation = tween(4000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "breatheScale"
     )
 
-    val scrollState = rememberScrollState()
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Header
+        // Top App Header
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(top = 16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF2E1C1C))
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2A20)),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = null,
-                        tint = Color(0xFFFF8A80),
+                        tint = Color(0xFF81C784),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Acceso bloqueado: $appName",
-                        color = Color(0xFFFF8A80),
+                        text = "${AppStrings.get("block_access_to", isEng)} $appName",
+                        color = Color(0xFFA5D6A7),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "Toma una pausa consciente",
-                style = MaterialTheme.typography.headlineSmall,
+                text = AppStrings.get("block_breathe_title", isEng),
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
-
             Text(
-                text = "Rompe el ciclo del impulso automático. Respira antes de decidir.",
+                text = AppStrings.get("block_breathe_subtitle", isEng),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF9E9E9E),
-                textAlign = TextAlign.Center
+                color = Color(0xFF8E8E8E),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp)
             )
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
 
         // Center Breathing Bubble
         Column(
@@ -291,7 +295,7 @@ fun DirectBreathingBlockScreen(
                                 color = Color.White
                             )
                             Text(
-                                text = "Respira",
+                                text = if (isEng) "Breathe" else "Respira",
                                 fontSize = 11.sp,
                                 color = Color(0xFFC8E6C9)
                             )
@@ -338,7 +342,7 @@ fun DirectBreathingBlockScreen(
                     Icon(imageVector = Icons.Default.Home, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Volver a mi enfoque",
+                        text = AppStrings.get("btn_back_to_focus", isEng),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -369,7 +373,7 @@ fun DirectBreathingBlockScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (secondsLeft > 0) "Pausa de 1 min (Espera $secondsLeft s)" else "Usar app por 1 minuto",
+                            text = if (secondsLeft > 0) (if (isEng) "Pause for 1 min (Wait ${secondsLeft}s)" else "Pausa de 1 min (Espera $secondsLeft s)") else AppStrings.get("btn_use_1_min", isEng),
                             color = if (secondsLeft == 0) Color(0xFFFFB74D) else Color(0xFF555555),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
@@ -379,22 +383,28 @@ fun DirectBreathingBlockScreen(
             } else {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF241C14))
-                        .padding(vertical = 10.dp, horizontal = 14.dp),
-                    contentAlignment = Alignment.Center
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF221A1A))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text(
-                        text = "🔒 Modo Estricto: Sin excepciones",
-                        color = Color(0xFFFFB74D),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Color(0xFFFF8A80),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isEng) "Strict Mode Active: 1-minute unlocks disabled" else "Modo Estricto Activo: desbloqueos de 1 min deshabilitados",
+                            color = Color(0xFFFF8A80),
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

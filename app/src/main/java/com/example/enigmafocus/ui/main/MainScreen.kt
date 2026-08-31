@@ -24,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.enigmafocus.data.AppStrings
 
 @Composable
 fun MainScreen(
@@ -31,6 +32,7 @@ fun MainScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val isEng = uiState.isEnglish
 
     Scaffold(
         bottomBar = {
@@ -44,10 +46,10 @@ fun MainScreen(
                     icon = {
                         Icon(
                             imageVector = if (selectedTab == 0) Icons.Filled.HourglassBottom else Icons.Outlined.HourglassEmpty,
-                            contentDescription = "Enfoque"
+                            contentDescription = AppStrings.get("tab_focus", isEng)
                         )
                     },
-                    label = { Text("Enfoque") },
+                    label = { Text(AppStrings.get("tab_focus", isEng)) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF4CAF50),
                         selectedTextColor = Color(0xFF4CAF50),
@@ -63,10 +65,10 @@ fun MainScreen(
                     icon = {
                         Icon(
                             imageVector = if (selectedTab == 1) Icons.Filled.Apps else Icons.Outlined.Apps,
-                            contentDescription = "Apps"
+                            contentDescription = AppStrings.get("tab_apps", isEng)
                         )
                     },
-                    label = { Text("Apps") },
+                    label = { Text(AppStrings.get("tab_apps", isEng)) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF4CAF50),
                         selectedTextColor = Color(0xFF4CAF50),
@@ -82,10 +84,10 @@ fun MainScreen(
                     icon = {
                         Icon(
                             imageVector = if (selectedTab == 2) Icons.Filled.Settings else Icons.Outlined.Settings,
-                            contentDescription = "Ajustes"
+                            contentDescription = AppStrings.get("tab_settings", isEng)
                         )
                     },
-                    label = { Text("Ajustes") },
+                    label = { Text(AppStrings.get("tab_settings", isEng)) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF4CAF50),
                         selectedTextColor = Color(0xFF4CAF50),

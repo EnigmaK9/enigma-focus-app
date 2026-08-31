@@ -99,6 +99,19 @@
             </intent-filter>
         </receiver>
 
+        <!-- Command Receiver for Unix CLI and Tasker automation -->
+        <receiver
+            android:name=".receiver.FocusCommandReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.enigmafocus.action.START_SESSION" />
+                <action android:name="com.example.enigmafocus.action.STOP_SESSION" />
+                <action android:name="com.example.enigmafocus.action.TOGGLE_GRAYSCALE" />
+                <action android:name="com.example.enigmafocus.action.SET_GRAYSCALE" />
+                <action android:name="com.example.enigmafocus.action.SET_ALWAYS_BLOCK" />
+            </intent-filter>
+        </receiver>
+
         <!-- Quick Settings Tile for Grayscale Mode -->
         <service
             android:name=".service.GrayscaleTileService"
