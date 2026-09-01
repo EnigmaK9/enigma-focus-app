@@ -32,6 +32,10 @@ android {
       shaders = false
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -44,6 +48,7 @@ kotlin {
 }
 
 dependencies {
+  testImplementation("org.json:json:20240303")
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)

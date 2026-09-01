@@ -109,6 +109,15 @@
                 <action android:name="com.example.enigmafocus.action.TOGGLE_GRAYSCALE" />
                 <action android:name="com.example.enigmafocus.action.SET_GRAYSCALE" />
                 <action android:name="com.example.enigmafocus.action.SET_ALWAYS_BLOCK" />
+                <action android:name="com.example.enigmafocus.action.SET_STRICT_MODE" />
+                <action android:name="com.example.enigmafocus.action.BLOCK_PACKAGE" />
+                <action android:name="com.example.enigmafocus.action.UNBLOCK_PACKAGE" />
+                <action android:name="com.example.enigmafocus.action.SET_LANGUAGE" />
+                <action android:name="com.example.enigmafocus.action.APPLY_TEMPLATE" />
+                <action android:name="com.example.enigmafocus.action.RELOAD_CONFIG" />
+                <action android:name="com.example.enigmafocus.action.EXPORT_CONFIG" />
+                <action android:name="com.example.enigmafocus.action.GET_STATUS" />
+                <action android:name="com.example.enigmafocus.action.CLEAR_LOGS" />
             </intent-filter>
         </receiver>
 

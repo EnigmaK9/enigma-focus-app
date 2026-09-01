@@ -173,8 +173,66 @@ Durante tu horario de sueño:
 
 ---
 
+## 8. Troubleshooting & Xiaomi / MIUI / HyperOS Setup
+On Xiaomi / Redmi / Poco devices:
+1. **Autostart**: `Settings -> Apps -> Manage apps -> Enigma Focus -> Autostart -> Allow`.
+2. **Battery Saver**: Choose `No restrictions`.
+3. **Display pop-up windows while running in background**: Allow.
+
+---
+
+## 9. Unix CLI Broadcasts & Declarative JSON Configuration
+Enigma Focus follows the Unix philosophy (*"Do one thing and do it well"*):
+- **Universal CLI Intents**:
+  ```bash
+  # Start 45 min focus session
+  adb shell am broadcast -a com.example.enigmafocus.action.START_SESSION --ei duration_minutes 45
+
+  # Stop session
+  adb shell am broadcast -a com.example.enigmafocus.action.STOP_SESSION
+
+  # Toggle grayscale
+  adb shell am broadcast -a com.example.enigmafocus.action.TOGGLE_GRAYSCALE
+
+  # Query status JSON
+  adb shell am broadcast -a com.example.enigmafocus.action.GET_STATUS
+
+  # Apply predefined template (DEFAULT, WORKDAY_ONLY, BEDTIME_STRICT, DIGITAL_DETOX)
+  adb shell am broadcast -a com.example.enigmafocus.action.APPLY_TEMPLATE --es template BEDTIME_STRICT
+  ```
+- **Declarative JSON Logs**: Silent local event telemetry is written to `/data/data/com.example.enigmafocus/files/focus_events.jsonl` for clean Unix analysis (`jq`, `grep`, `awk`).
+
+---
+
+## Guía de Usuario en Español
+
+---
+
 ## 8. Solución de Problemas y Ajustes para Xiaomi / MIUI / HyperOS
 En dispositivos Xiaomi / Redmi / Poco, configura:
 1. **Inicio Automático**: `Ajustes -> Aplicaciones -> Administrar aplicaciones -> Enigma Focus -> Inicio automático -> Permitir`.
 2. **Ahorro de Batería**: Seleccionar `Sin restricciones`.
 3. **Mostrar ventanas emergentes en segundo plano**: Permitido en permisos de la app.
+
+---
+
+## 9. Interfaz CLI Unix y Configuración Declarativa JSON
+Enigma Focus implementa los principios de la filosofía Unix (*"Haz una sola cosa y hazla bien"*):
+- **Comandos CLI vía ADB / Tasker / Termux**:
+  ```bash
+  # Iniciar sesión de 45 minutos
+  adb shell am broadcast -a com.example.enigmafocus.action.START_SESSION --ei duration_minutes 45
+
+  # Detener sesión
+  adb shell am broadcast -a com.example.enigmafocus.action.STOP_SESSION
+
+  # Alternar escala de grises
+  adb shell am broadcast -a com.example.enigmafocus.action.TOGGLE_GRAYSCALE
+
+  # Consultar estado en JSON
+  adb shell am broadcast -a com.example.enigmafocus.action.GET_STATUS
+
+  # Aplicar plantilla predefinida (DEFAULT, WORKDAY_ONLY, BEDTIME_STRICT, DIGITAL_DETOX)
+  adb shell am broadcast -a com.example.enigmafocus.action.APPLY_TEMPLATE --es template BEDTIME_STRICT
+  ```
+- **Registros en Texto Plano (`.jsonl`)**: Registro local en `/data/data/com.example.enigmafocus/files/focus_events.jsonl` 100% privado y analizable con herramientas estándar (`jq`, `grep`, `awk`).

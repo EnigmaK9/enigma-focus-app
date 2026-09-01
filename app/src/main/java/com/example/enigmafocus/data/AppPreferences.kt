@@ -67,6 +67,70 @@ object AppPreferences {
     )
 
     private lateinit var prefs: SharedPreferences
+    private val inMemoryMap = mutableMapOf<String, Any>()
+
+    fun isInitialized(): Boolean = ::prefs.isInitialized
+
+    private fun getBooleanPref(key: String, defValue: Boolean): Boolean {
+        return if (::prefs.isInitialized) prefs.getBoolean(key, defValue) else (inMemoryMap[key] as? Boolean ?: defValue)
+    }
+
+    private fun putBooleanPref(key: String, value: Boolean) {
+        if (::prefs.isInitialized) {
+            prefs.edit().putBoolean(key, value).apply()
+        } else {
+            inMemoryMap[key] = value
+        }
+    }
+
+    private fun getStringPref(key: String, defValue: String?): String? {
+        return if (::prefs.isInitialized) prefs.getString(key, defValue) else (inMemoryMap[key] as? String ?: defValue)
+    }
+
+    private fun putStringPref(key: String, value: String?) {
+        if (::prefs.isInitialized) {
+            prefs.edit().putString(key, value).apply()
+        } else {
+            if (value != null) inMemoryMap[key] = value else inMemoryMap.remove(key)
+        }
+    }
+
+    private fun getLongPref(key: String, defValue: Long): Long {
+        return if (::prefs.isInitialized) prefs.getLong(key, defValue) else (inMemoryMap[key] as? Long ?: defValue)
+    }
+
+    private fun putLongPref(key: String, value: Long) {
+        if (::prefs.isInitialized) {
+            prefs.edit().putLong(key, value).apply()
+        } else {
+            inMemoryMap[key] = value
+        }
+    }
+
+    private fun getIntPref(key: String, defValue: Int): Int {
+        return if (::prefs.isInitialized) prefs.getInt(key, defValue) else (inMemoryMap[key] as? Int ?: defValue)
+    }
+
+    private fun putIntPref(key: String, value: Int) {
+        if (::prefs.isInitialized) {
+            prefs.edit().putInt(key, value).apply()
+        } else {
+            inMemoryMap[key] = value
+        }
+    }
+
+    private fun getStringSetPref(key: String, defValue: Set<String>): Set<String> {
+        @Suppress("UNCHECKED_CAST")
+        return if (::prefs.isInitialized) (prefs.getStringSet(key, defValue) ?: defValue) else (inMemoryMap[key] as? Set<String> ?: defValue)
+    }
+
+    private fun putStringSetPref(key: String, value: Set<String>) {
+        if (::prefs.isInitialized) {
+            prefs.edit().putStringSet(key, value).apply()
+        } else {
+            inMemoryMap[key] = value
+        }
+    }
 
     private val _blockedPackagesFlow = MutableStateFlow<Set<String>>(emptySet())
     val blockedPackagesFlow: StateFlow<Set<String>> = _blockedPackagesFlow.asStateFlow()
@@ -133,11 +197,11 @@ object AppPreferences {
     }
 
     fun getSelectedLanguagePreference(): String {
-        return prefs.getString(KEY_APP_LANGUAGE, "system") ?: "system"
+        return getStringPref(KEY_APP_LANGUAGE, "system") ?: "system"
     }
 
     fun getAppLanguage(): String {
-        val pref = prefs.getString(KEY_APP_LANGUAGE, "system") ?: "system"
+        val pref = getStringPref(KEY_APP_LANGUAGE, "system") ?: "system"
         return if (pref == "system") getSystemLanguage() else pref
     }
 
@@ -146,25 +210,25 @@ object AppPreferences {
     }
 
     fun setAppLanguage(language: String) {
-        prefs.edit().putString(KEY_APP_LANGUAGE, language).apply()
+        putStringPref(KEY_APP_LANGUAGE, language)
         _languageFlow.value = if (language == "system") getSystemLanguage() else language
     }
 
     fun isAntiImpulseEnabled(): Boolean {
-        return prefs.getBoolean(KEY_ANTI_IMPULSE, false)
+        return getBooleanPref(KEY_ANTI_IMPULSE, false)
     }
 
     fun setAntiImpulseEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_ANTI_IMPULSE, enabled).apply()
+        putBooleanPref(KEY_ANTI_IMPULSE, enabled)
         _antiImpulseFlow.value = enabled
     }
 
     fun getBlockedPackages(): Set<String> {
-        return prefs.getStringSet(KEY_BLOCKED_PACKAGES, DEFAULT_POPULAR_PACKAGES) ?: DEFAULT_POPULAR_PACKAGES
+        return getStringSetPref(KEY_BLOCKED_PACKAGES, DEFAULT_POPULAR_PACKAGES)
     }
 
     fun setBlockedPackages(packages: Set<String>) {
-        prefs.edit().putStringSet(KEY_BLOCKED_PACKAGES, packages).apply()
+        putStringSetPref(KEY_BLOCKED_PACKAGES, packages)
         _blockedPackagesFlow.value = packages
     }
 
@@ -187,9 +251,9 @@ object AppPreferences {
     }
 
     fun isFocusActive(): Boolean {
-        val active = prefs.getBoolean(KEY_FOCUS_ACTIVE, false)
+        val active = getBooleanPref(KEY_FOCUS_ACTIVE, false)
         if (active) {
-            val end = prefs.getLong(KEY_FOCUS_END_TIMESTAMP, 0L)
+            val end = getLongPref(KEY_FOCUS_END_TIMESTAMP, 0L)
             if (end > 0 && System.currentTimeMillis() >= end) {
                 // Session expired
                 setFocusActive(false, 0L, 0)
@@ -200,28 +264,26 @@ object AppPreferences {
     }
 
     fun setFocusActive(active: Boolean, endTimestamp: Long = 0L, durationMinutes: Int = 0) {
-        prefs.edit()
-            .putBoolean(KEY_FOCUS_ACTIVE, active)
-            .putLong(KEY_FOCUS_END_TIMESTAMP, endTimestamp)
-            .putInt(KEY_FOCUS_DURATION_MINUTES, durationMinutes)
-            .apply()
+        putBooleanPref(KEY_FOCUS_ACTIVE, active)
+        putLongPref(KEY_FOCUS_END_TIMESTAMP, endTimestamp)
+        putIntPref(KEY_FOCUS_DURATION_MINUTES, durationMinutes)
         _focusActiveFlow.value = active
     }
 
     fun getFocusEndTimestamp(): Long {
-        return prefs.getLong(KEY_FOCUS_END_TIMESTAMP, 0L)
+        return getLongPref(KEY_FOCUS_END_TIMESTAMP, 0L)
     }
 
     fun getFocusDurationMinutes(): Int {
-        return prefs.getInt(KEY_FOCUS_DURATION_MINUTES, 25)
+        return getIntPref(KEY_FOCUS_DURATION_MINUTES, 25)
     }
 
     fun isAutoGrayscaleEnabled(): Boolean {
-        return prefs.getBoolean(KEY_AUTO_GRAYSCALE, true)
+        return getBooleanPref(KEY_AUTO_GRAYSCALE, true)
     }
 
     fun setAutoGrayscaleEnabled(context: Context, enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_AUTO_GRAYSCALE, enabled).apply()
+        putBooleanPref(KEY_AUTO_GRAYSCALE, enabled)
         _autoGrayscaleFlow.value = enabled
         if (!enabled) {
             GrayscaleManager.setGrayscaleEnabled(context, false)
@@ -229,70 +291,61 @@ object AppPreferences {
     }
 
     fun isAlwaysBlockEnabled(): Boolean {
-        return prefs.getBoolean(KEY_ALWAYS_BLOCK, true)
+        return getBooleanPref(KEY_ALWAYS_BLOCK, true)
     }
 
     fun setAlwaysBlockEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_ALWAYS_BLOCK, enabled).apply()
+        putBooleanPref(KEY_ALWAYS_BLOCK, enabled)
         _alwaysBlockFlow.value = enabled
     }
 
     fun isStrictModeEnabled(): Boolean {
-        return prefs.getBoolean(KEY_STRICT_MODE, false)
+        return getBooleanPref(KEY_STRICT_MODE, false)
     }
 
     fun setStrictModeEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_STRICT_MODE, enabled).apply()
+        putBooleanPref(KEY_STRICT_MODE, enabled)
         _strictModeFlow.value = enabled
     }
 
     fun setTemporaryWhitelist(packageName: String, durationMinutes: Int) {
         val expiry = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
-        prefs.edit()
-            .putString(KEY_TEMP_WHITELIST_PKG, packageName)
-            .putLong(KEY_TEMP_WHITELIST_EXPIRY, expiry)
-            .apply()
+        putStringPref(KEY_TEMP_WHITELIST_PKG, packageName)
+        putLongPref(KEY_TEMP_WHITELIST_EXPIRY, expiry)
     }
 
     fun clearTemporaryWhitelist() {
-        prefs.edit()
-            .remove(KEY_TEMP_WHITELIST_PKG)
-            .remove(KEY_TEMP_WHITELIST_EXPIRY)
-            .apply()
+        putStringPref(KEY_TEMP_WHITELIST_PKG, null)
+        putLongPref(KEY_TEMP_WHITELIST_EXPIRY, 0L)
     }
 
     fun isTemporarilyWhitelisted(packageName: String): Boolean {
-        if (isStrictModeEnabled()) return false
-        val whitelistedPkg = prefs.getString(KEY_TEMP_WHITELIST_PKG, null) ?: return false
-        if (whitelistedPkg != packageName) return false
-        val expiry = prefs.getLong(KEY_TEMP_WHITELIST_EXPIRY, 0L)
-        val valid = System.currentTimeMillis() < expiry
-        if (!valid) {
-            clearTemporaryWhitelist()
+        val whitelistedPkg = getStringPref(KEY_TEMP_WHITELIST_PKG, null) ?: return false
+        val expiry = getLongPref(KEY_TEMP_WHITELIST_EXPIRY, 0L)
+        if (whitelistedPkg == packageName && System.currentTimeMillis() < expiry) {
+            return true
         }
-        return valid
+        return false
     }
 
     // --- Scheduled Intervals Logic ---
 
     fun getIntervals(): List<FocusInterval> {
-        return _intervalsFlow.value
+        val rawSet = getStringSetPref(KEY_FOCUS_INTERVALS, emptySet())
+        if (rawSet.isEmpty()) {
+            return DEFAULT_SCHEDULED_INTERVALS
+        }
+        val list = rawSet.mapNotNull { deserializeInterval(it) }
+        return if (list.isEmpty()) DEFAULT_SCHEDULED_INTERVALS else list.sortedWith(compareBy({ it.startHour }, { it.startMinute }))
     }
 
     private fun loadIntervals() {
-        val set = prefs.getStringSet(KEY_FOCUS_INTERVALS, null)
-        if (set == null) {
-            saveIntervals(DEFAULT_SCHEDULED_INTERVALS)
-            _intervalsFlow.value = DEFAULT_SCHEDULED_INTERVALS
-        } else {
-            val list = set.mapNotNull { deserializeInterval(it) }
-            _intervalsFlow.value = list.ifEmpty { DEFAULT_SCHEDULED_INTERVALS }
-        }
+        _intervalsFlow.value = getIntervals()
     }
 
     fun saveIntervals(intervals: List<FocusInterval>) {
-        val serializedSet = intervals.map { serializeInterval(it) }.toSet()
-        prefs.edit().putStringSet(KEY_FOCUS_INTERVALS, serializedSet).apply()
+        val rawSet = intervals.map { serializeInterval(it) }.toSet()
+        putStringSetPref(KEY_FOCUS_INTERVALS, rawSet)
         _intervalsFlow.value = intervals
     }
 

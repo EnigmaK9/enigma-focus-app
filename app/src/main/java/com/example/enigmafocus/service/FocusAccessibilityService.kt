@@ -16,8 +16,10 @@ import android.text.TextUtils
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.example.enigmafocus.core.interceptor.FocusInterceptor
+import com.example.enigmafocus.core.scheduler.ScheduleEvaluator
 import com.example.enigmafocus.data.AppPreferences
-import com.example.enigmafocus.data.FocusInterval
+import com.example.enigmafocus.data.FocusEventLogger
 import com.example.enigmafocus.ui.block.BlockOverlayManager
 import com.example.enigmafocus.ui.block.SleepOverlayManager
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +28,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 class FocusAccessibilityService : AccessibilityService() {
 
@@ -68,50 +69,24 @@ class FocusAccessibilityService : AccessibilityService() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    // Reset 1-minute snooze when screen is turned off so next unlock locks immediately
                     SleepOverlayManager.resetDismissedTime()
                 }
                 Intent.ACTION_SCREEN_ON -> {
                     val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
-                    // If device is not locked with PIN/Pattern, show sleep nudge immediately
                     if (keyguardManager?.isKeyguardLocked == false) {
-                        if (isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
+                        if (ScheduleEvaluator.isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
                             SleepOverlayManager.showSleepNudge(this@FocusAccessibilityService)
                         }
                     }
                 }
                 Intent.ACTION_USER_PRESENT -> {
-                    // Device was just unlocked with PIN/Fingerprint/Pattern
-                    if (isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
+                    if (ScheduleEvaluator.isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
                         SleepOverlayManager.showSleepNudge(this@FocusAccessibilityService)
                     }
                 }
             }
         }
     }
-
-    private val browserPackages = setOf(
-        "com.android.chrome",
-        "com.brave.browser",
-        "com.microsoft.emmx",
-        "org.mozilla.firefox",
-        "com.opera.browser",
-        "com.sec.android.app.sbrowser",
-        "com.duckduckgo.mobile.android"
-    )
-
-    private val blockedWebDomains = listOf(
-        "instagram.com",
-        "reddit.com",
-        "tiktok.com",
-        "twitter.com",
-        "x.com",
-        "youtube.com",
-        "facebook.com",
-        "twitch.tv",
-        "web.whatsapp.com",
-        "whatsapp.com"
-    )
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -144,8 +119,7 @@ class FocusAccessibilityService : AccessibilityService() {
             Log.e(TAG, "Error registering screen state receiver", e)
         }
 
-        Log.i(TAG, "AccessibilityService connected and ready!")
-
+        Log.i(TAG, "⚡ AccessibilityService connected and ready!")
         startWatchdog()
     }
 
@@ -157,7 +131,7 @@ class FocusAccessibilityService : AccessibilityService() {
                     val root = rootInActiveWindow
                     val pkg = root?.packageName?.toString() ?: ""
 
-                    if (isSleepScheduleActive()) {
+                    if (ScheduleEvaluator.isSleepScheduleActive()) {
                         checkSleepSchedule(pkg)
                     } else if (pkg.isNotEmpty()) {
                         checkAndBlockPackage(pkg)
@@ -179,7 +153,7 @@ class FocusAccessibilityService : AccessibilityService() {
         val pkgCharSequence = event.packageName ?: return
         val packageName = pkgCharSequence.toString()
 
-        if (isSleepScheduleActive()) {
+        if (ScheduleEvaluator.isSleepScheduleActive()) {
             checkSleepSchedule(packageName)
         } else {
             checkAndBlockPackage(packageName)
@@ -191,103 +165,34 @@ class FocusAccessibilityService : AccessibilityService() {
     }
 
     private fun checkBrowserUrls(root: AccessibilityNodeInfo, packageName: String) {
-        if (!browserPackages.contains(packageName)) return
+        if (!FocusInterceptor.BROWSER_PACKAGES.contains(packageName)) return
 
-        val isScheduledActive = AppPreferences.isAnyScheduledIntervalActive()
-        val isFocusActive = AppPreferences.isFocusActive() || isScheduledActive
-        val isAlwaysBlock = AppPreferences.isAlwaysBlockEnabled()
+        val isFocusActive = ScheduleEvaluator.isFocusActive() || AppPreferences.isAlwaysBlockEnabled()
+        if (!isFocusActive) return
 
-        if (!isFocusActive && !isAlwaysBlock) return
+        val detectedDomain = FocusInterceptor.findBlockedDomainInNode(root) ?: return
 
-        val detectedUrl = findUrlInNode(root)?.lowercase() ?: return
-        for (domain in blockedWebDomains) {
-            if (detectedUrl.contains(domain)) {
-                if (AppPreferences.isTemporarilyWhitelisted(packageName)) return
+        if (AppPreferences.isTemporarilyWhitelisted(packageName)) return
+        if (BlockOverlayManager.isShowing()) return
 
-                if (BlockOverlayManager.isShowing()) return
+        val now = System.currentTimeMillis()
+        if (detectedDomain == lastBlockedPkg && (now - lastBlockedTime) < 1000) return
 
-                val now = System.currentTimeMillis()
-                if (domain == lastBlockedPkg && (now - lastBlockedTime) < 1000) return
+        lastBlockedPkg = detectedDomain
+        lastBlockedTime = now
 
-                lastBlockedPkg = domain
-                lastBlockedTime = now
-
-                Log.i(TAG, "🛑 Intercepted blocked web domain in browser: $domain")
-                vibratePhone()
-                BlockOverlayManager.showOverlay(this, "Web ($domain)") {
-                    clearDebounce()
-                }
-                break
-            }
+        Log.i(TAG, "🛑 Intercepted blocked web domain in browser: $detectedDomain")
+        vibratePhone()
+        FocusEventLogger.logEvent(this, "url_blocked", mapOf("domain" to detectedDomain, "browser" to packageName))
+        BlockOverlayManager.showOverlay(this, "Web ($detectedDomain)") {
+            clearDebounce()
         }
-    }
-
-    private fun findUrlInNode(node: AccessibilityNodeInfo?, depth: Int = 0): String? {
-        if (node == null || depth > 6) return null
-        val text = node.text?.toString()
-        if (text != null && (text.contains(".") || text.startsWith("http"))) {
-            for (domain in blockedWebDomains) {
-                if (text.contains(domain, ignoreCase = true)) {
-                    return text
-                }
-            }
-        }
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            val found = findUrlInNode(child, depth + 1)
-            if (found != null) return found
-        }
-        return null
-    }
-
-    private fun isSleepInterval(interval: FocusInterval): Boolean {
-        val label = interval.label.lowercase()
-        val isOvernightHours = interval.startHour > interval.endHour && (interval.startHour >= 20 || interval.endHour <= 9)
-        return label.contains("dormir") ||
-               label.contains("descanso") ||
-               label.contains("sueño") ||
-               label.contains("noche") ||
-               label.contains("sleep") ||
-               label.contains("rest") ||
-               isOvernightHours
-    }
-
-    private fun isSleepScheduleActive(): Boolean {
-        val active = AppPreferences.getActiveScheduledInterval()
-        if (active != null && isSleepInterval(active)) return true
-
-        for (interval in AppPreferences.getIntervals()) {
-            if (interval.isEnabled && isSleepInterval(interval) && interval.isCurrentlyActive()) {
-                return true
-            }
-        }
-
-        // Fallback: 22:30 to 06:30 overnight check
-        val cal = Calendar.getInstance()
-        val currentMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-        val isOvernight = currentMinutes >= (22 * 60 + 30) || currentMinutes < (6 * 60 + 30)
-        return isOvernight
-    }
-
-    private fun isEmergencyPackage(packageName: String): Boolean {
-        return packageName == this.packageName ||
-               packageName == "com.android.phone" ||
-               packageName == "com.google.android.dialer" ||
-               packageName == "com.android.dialer" ||
-               packageName == "com.samsung.android.dialer" ||
-               packageName == "com.android.server.telecom" ||
-               packageName == "com.android.incallui" ||
-               packageName.contains("dialer") ||
-               packageName.contains("telecom") ||
-               packageName.contains("incallui") ||
-               packageName.contains("deskclock") ||
-               packageName.contains("clockpackage")
     }
 
     private fun checkSleepSchedule(packageName: String) {
-        if (!isSleepScheduleActive()) return
+        if (!ScheduleEvaluator.isSleepScheduleActive()) return
 
-        if (isEmergencyPackage(packageName) ||
+        if (FocusInterceptor.isEmergencyPackage(this.packageName, packageName) ||
             packageName == "android" ||
             packageName == "com.android.systemui" ||
             packageName.contains("systemui")
@@ -297,63 +202,21 @@ class FocusAccessibilityService : AccessibilityService() {
 
         if (SleepOverlayManager.canShowNudge() && !BlockOverlayManager.isShowing()) {
             vibratePhone()
+            FocusEventLogger.logEvent(this, "bedtime_lockout", mapOf("trigger_package" to packageName))
             SleepOverlayManager.showSleepNudge(this)
         }
     }
 
-    private fun isLauncherPackage(packageName: String): Boolean {
-        return packageName.contains("launcher") ||
-               packageName == "com.miui.home" ||
-               packageName == "com.sec.android.app.launcher" ||
-               packageName == "com.huawei.android.launcher" ||
-               packageName == "com.oppo.launcher" ||
-               packageName == "com.vivo.launcher"
-    }
-
     private fun checkAndBlockPackage(packageName: String) {
-        if (packageName == this.packageName ||
-            packageName == "android" ||
-            packageName == "com.android.systemui" ||
-            packageName.contains("systemui") ||
-            packageName.contains("inputmethod")
-        ) {
-            return
-        }
-
-        if (isLauncherPackage(packageName)) {
+        if (FocusInterceptor.isLauncherPackage(packageName)) {
             if (BlockOverlayManager.isShowing()) {
                 BlockOverlayManager.hideOverlay(this)
             }
             return
         }
 
-        try {
-            AppPreferences.init(applicationContext)
-        } catch (e: Exception) {
-            // Ignore
-        }
-
-        val isScheduledActive = AppPreferences.isAnyScheduledIntervalActive()
-        val isFocusActive = AppPreferences.isFocusActive() || isScheduledActive
-        val isAlwaysBlock = AppPreferences.isAlwaysBlockEnabled()
-
-        if (!isFocusActive && !isAlwaysBlock) {
-            if (BlockOverlayManager.isShowing()) {
-                BlockOverlayManager.hideOverlay(this)
-            }
-            return
-        }
-
-        val isBlocked = AppPreferences.isAppBlocked(packageName)
-        if (!isBlocked) {
+        if (!FocusInterceptor.shouldBlockPackage(this.packageName, packageName)) {
             if (BlockOverlayManager.isShowing() && BlockOverlayManager.getCurrentPackage() != packageName) {
-                BlockOverlayManager.hideOverlay(this)
-            }
-            return
-        }
-
-        if (AppPreferences.isTemporarilyWhitelisted(packageName)) {
-            if (BlockOverlayManager.isShowing()) {
                 BlockOverlayManager.hideOverlay(this)
             }
             return
@@ -371,8 +234,8 @@ class FocusAccessibilityService : AccessibilityService() {
         lastBlockedTime = now
 
         Log.i(TAG, "🛑 Displaying breathing overlay for blocked app: $packageName")
-
         vibratePhone()
+        FocusEventLogger.logEvent(this, "app_blocked", mapOf("package" to packageName))
 
         BlockOverlayManager.showOverlay(this, packageName) {
             clearDebounce()
