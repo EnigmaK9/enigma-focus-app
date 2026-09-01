@@ -36,10 +36,10 @@
 % Configuración de Encabezados y Pies de Página
 \pagestyle{fancy}
 \fancyhf{}
-\rhead{\textcolor{accentGreen}{\textbf{Enigma Focus} — Manual de Arquitectura \& Entrevistas Senior}}
-\lhead{\textcolor{textDark}{\leftmark}}
-\rfoot{\textbf{\thepage}}
-\renewcommand{\headrulewidth}{0.8pt}
+\fancyhead[L]{\small\textcolor{textDark}{\nouppercase{\leftmark}}}
+\fancyhead[R]{\small\textcolor{accentGreen}{\textbf{Enigma Focus}}}
+\fancyfoot[C]{\textbf{\thepage}}
+\renewcommand{\headrulewidth}{0.6pt}
 \renewcommand{\footrulewidth}{0.4pt}
 
 % Formato de Títulos
@@ -151,7 +151,7 @@
 % =========================================================================
 % CAPÍTULO 1: INTRODUCCIÓN Y FILOSOFÍA DEL PROYECTO
 % =========================================================================
-\chapter{Introducción, Filosofía Unix y Planteamiento del Problema}
+\chapter[Introducción y Filosofía Unix]{Introducción, Filosofía Unix y Planteamiento del Problema}
 
 \section{La Crisis de la Atención Digital y el Diseño Dopaminérgico}
 En la era contemporánea del software móvil, las plataformas de redes sociales y consumo pasivo de medios (como TikTok, Instagram Reels, YouTube Shorts y X) emplean patrones de diseño de interacción altamente optimizados para maximizar el tiempo de retención mediante esquemas de recompensa variable continua (diseño de máquina tragamonedas o \textit{slot machine mechanics}). 
@@ -204,7 +204,7 @@ Código Abierto / Auditabilidad & \textbf{100\% Open Source} & Código Cerrado &
 % =========================================================================
 % CAPÍTULO 2: ARQUITECTURA DEL SISTEMA Y CLEAN ARCHITECTURE
 % =========================================================================
-\chapter{Arquitectura del Sistema, MVI/MVVM y Desacoplamiento Modular}
+\chapter[Arquitectura y MVI/MVVM]{Arquitectura del Sistema, MVI/MVVM y Desacoplamiento Modular}
 
 \section{Clean Architecture y Separación de Capas}
 Para garantizar que el software sea testeable, mantenible y robusto contra cambios en el framework de Android, Enigma Focus implementa una arquitectura desacoplada estructurada en capas concéntricas:
@@ -287,7 +287,7 @@ object AppPreferences {
 % =========================================================================
 % CAPÍTULO 3: ANDROID INTERNALS Y MECANISMOS DE BAJO NIVEL
 % =========================================================================
-\chapter{Android Internals, Accesibilidad y Control de Hardware}
+\chapter[Android Internals y Hardware]{Android Internals, Accesibilidad y Control de Hardware}
 
 \section{AccessibilityService vs. UsageStatsManager: Análisis de Latencia}
 En el ecosistema Android existen dos mecanismos principales para supervisar el uso de aplicaciones: \texttt{UsageStatsManager} y \texttt{AccessibilityService}.
@@ -368,7 +368,7 @@ object GrayscaleManager {
 % =========================================================================
 % CAPÍTULO 4: EL MOTOR DE BLOQUEO, WATCHDOG Y ANTI-RELAPSO
 % =========================================================================
-\chapter{El Motor de Bloqueo, Watchdog y Algoritmos Anti-Relapso}
+\chapter[Motor de Bloqueo y Watchdog]{El Motor de Bloqueo, Watchdog y Algoritmos Anti-Relapso}
 
 \section{Bucle Watchdog de 300 ms y Detección de Fugas}
 Para cerrar cualquier vulnerabilidad de ventanas flotantes o divisiones de pantalla, \texttt{FocusAccessibilityService} incorpora una corrutina de supervisión activa (\textbf{Watchdog Loop}) que se ejecuta cada 300 ms:
@@ -435,7 +435,7 @@ fun isCurrentlyActive(calendar: Calendar = Calendar.getInstance()): Boolean {
 % =========================================================================
 % CAPÍTULO 5: INTEROPERABILIDAD UNIX, CLI Y CONFIGURACIÓN
 % =========================================================================
-\chapter{Interoperabilidad Unix, CLI IPC y Configuración Declarativa}
+\chapter[Interoperabilidad Unix y CLI]{Interoperabilidad Unix, CLI IPC y Configuración Declarativa}
 
 \section{La Interfaz Universal de Texto: Configuración Declarativa en JSON}
 En consonancia con la filosofía Unix, todo el estado de configuración de Enigma Focus puede exportarse e importarse en un único documento estructurado en formato JSON (\texttt{enigma\_config.json}).
@@ -514,7 +514,7 @@ Enigma Focus implementa un receptor de difusión (\texttt{FocusCommandReceiver})
 % =========================================================================
 % CAPÍTULO 6: INTERNACIONALIZACIÓN Y DETECCIÓN DEL SISTEMA
 % =========================================================================
-\chapter{Internacionalización (i18n) Dinámica y Detección del Sistema}
+\chapter[Internacionalización Dinámica]{Internacionalización (i18n) Dinámica y Detección del Sistema}
 
 \section{Detección Automática con Soporte Multilingüe}
 Enigma Focus evalúa \texttt{Locale.getDefault().language} al primer inicio para sincronizarse con el idioma del sistema operativo, permitiendo alternar entre inglés y español al instante sin destruir el árbol de navegación.
@@ -531,7 +531,7 @@ Enigma Focus evalúa \texttt{Locale.getDefault().language} al primer inicio para
 % =========================================================================
 % CAPÍTULO 7: CONCURRENCIA, RENDIMIENTO Y OPTIMIZACIÓN EN OEMS
 % =========================================================================
-\chapter{Concurrencia, Rendimiento y Supervivencia ante Optimizadores de Batería}
+\chapter[Concurrencia y Rendimiento]{Concurrencia, Rendimiento y Supervivencia ante Optimizadores de Batería}
 
 \section{Manejo de Corrutinas y Ciclo de Vida en Servicios}
 \begin{lstlisting}[language=Kotlin, caption={Gestión de CoroutineScope en FocusForegroundService.}]
@@ -580,7 +580,7 @@ fun findBlockedDomainInNode(node: AccessibilityNodeInfo?, depth: Int = 0): Strin
 % =========================================================================
 % CAPÍTULO 8: ESTRATEGIA DE TESTING AUTOMATIZADO Y ESTRÉS
 % =========================================================================
-\chapter{Estrategia de Testing Automatizado y Pruebas de Estrés}
+\chapter[Testing Automatizado]{Estrategia de Testing Automatizado y Pruebas de Estrés}
 
 \section{La Suite de Pruebas Automatizadas}
 El proyecto cuenta con una batería de **23 pruebas unitarias y de estrés automatizadas** en JUnit 4 que cubren el 100\% de las rutas críticas del motor.
@@ -650,7 +650,7 @@ fun testConcurrency_stressIntervalEvaluation() {
 % =========================================================================
 % CAPÍTULO 9: BANCO EXHAUSTIVO DE 25 PREGUNTAS DE ENTREVISTA SENIOR
 % =========================================================================
-\chapter{Banco Exhaustivo de 25 Preguntas de Entrevista Técnica Senior (STAR)}
+\chapter[25 Preguntas STAR de Entrevista]{Banco Exhaustivo de 25 Preguntas de Entrevista Técnica Senior (STAR)}
 
 A continuación se presenta un banco estructurado de **25 preguntas técnicas de alto nivel** para puestos de **Senior Android Engineer**, **Staff Engineer** y **Mobile System Architect**, desarrolladas bajo el método **STAR** (\textit{Situation, Task, Action, Result}).
 
@@ -843,7 +843,7 @@ A continuación se presenta un banco estructurado de **25 preguntas técnicas de
 % =========================================================================
 % CAPÍTULO 10: DISEÑO DE SISTEMAS MÓVILES A GRAN ESCALA
 % =========================================================================
-\chapter{Diseño de Sistemas Móviles a Gran Escala (System Design Deep Dive)}
+\chapter[System Design Deep Dive]{Diseño de Sistemas Móviles a Gran Escala (System Design Deep Dive)}
 
 \section{Arquitectura para Flotas Empresariales y MDM (Enterprise Mobility Management)}
 En entornos corporativos donde se busca garantizar el enfoque de empleados o restringir dispositivos en modo kiosco (escuelas, fábricas, centros de operaciones), Enigma Focus puede evolucionar hacia un sistema de gestión centralizada:
@@ -888,7 +888,7 @@ En entornos corporativos donde se busca garantizar el enfoque de empleados o res
 % =========================================================================
 % CAPÍTULO 11: CATÁLOGO DE EJERCICIOS PRÁCTICOS DE LIVE CODING
 % =========================================================================
-\chapter{Catálogo de Ejercicios Prácticos de Live Coding para Entrevistas}
+\chapter[Ejercicios de Live Coding]{Catálogo de Ejercicios Prácticos de Live Coding para Entrevistas}
 
 \section{Ejercicio 1: Búsqueda Recursiva Acotada en Árboles de Vistas}
 \begin{lstlisting}[language=Kotlin, caption={Implementación de búsqueda recursiva acotada.}]
@@ -1015,7 +1015,7 @@ fun isIntervalActive(
 % =========================================================================
 % CAPÍTULO 12: GLOSARIO TÉCNICO Y CHEAT SHEET DE COMANDOS DEVOPS
 % =========================================================================
-\chapter{Glosario Técnico de Sistemas y Cheat Sheet de Comandos DevOps}
+\chapter[Glosario y Comandos DevOps]{Glosario Técnico de Sistemas y Cheat Sheet de Comandos DevOps}
 
 \section{Comandos de Diagnóstico de Bajo Nivel con ADB}
 \begin{lstlisting}[language=bash]
@@ -1057,7 +1057,7 @@ adb shell am start -n com.example.enigmafocus/.MainActivity
 % =========================================================================
 % CAPÍTULO 14: MANUAL DE DEBUGGING AVANZADO, PROFILING Y PERFORMANCE
 % =========================================================================
-\chapter{Manual de Debugging Avanzado, Profiling y Diagnóstico de Rendimiento}
+\chapter[Manual de Debugging y Profiling]{Manual de Debugging Avanzado, Profiling y Diagnóstico de Rendimiento}
 
 \section{Análisis de Fugas de Memoria con Memory Profiler y LeakCanary}
 El desarrollo de servicios de accesibilidad prolongados requiere una gestión de memoria estricta para evitar la acumulación de objetos no recolectados por el Garbage Collector (GC):
@@ -1115,7 +1115,7 @@ adb shell ss -tulnp | grep "com.example.enigmafocus"
 % =========================================================================
 % CAPÍTULO 15: SEGURIDAD MÓVIL, CRIPTOGRAFÍA Y HARDENING DE PROGUARD
 % =========================================================================
-\chapter{Seguridad Móvil, Criptografía y Hardening de ProGuard/R8}
+\chapter[Seguridad y ProGuard]{Seguridad Móvil, Criptografía y Hardening de ProGuard/R8}
 
 \section{Modelo de Seguridad Local y Almacenamiento Cifrado}
 Enigma Focus almacena todas sus credenciales y preferencias en el espacio de almacenamiento aislado de la aplicación (\textit{Sandboxed Internal Storage}):
@@ -1152,7 +1152,7 @@ El archivo \texttt{proguard-rules.pro} protege los modelos de datos y optimiza l
 % =========================================================================
 % CAPÍTULO 16: CONCLUSIONES Y RECOMENDACIONES FINALES
 % =========================================================================
-\chapter{Conclusiones y Recomendaciones Finales para el Candidato}
+\chapter[Conclusiones y Estrategia]{Conclusiones y Recomendaciones Finales para el Candidato}
 
 \section{Resumen de Logros de Ingeniería}
 El desarrollo de **Enigma Focus** sintetiza los aspectos más exigentes del desarrollo moderno de software móvil para la plataforma Android:
