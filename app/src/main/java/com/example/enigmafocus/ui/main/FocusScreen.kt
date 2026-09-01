@@ -162,7 +162,7 @@ fun FocusScreen(
                             fontSize = 14.sp
                         )
                         Text(
-                            text = "${state.activeScheduledInterval.label} (${state.activeScheduledInterval.formattedTimeRange()})",
+                            text = "${getLocalizedIntervalLabel(state.activeScheduledInterval.label, isEng)} (${state.activeScheduledInterval.formattedTimeRange()})",
                             color = Color.White,
                             fontSize = 13.sp
                         )
@@ -402,7 +402,7 @@ fun FocusScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = interval.label,
+                                        text = getLocalizedIntervalLabel(interval.label, isEng),
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
                                         fontSize = 15.sp
@@ -443,7 +443,7 @@ fun FocusScreen(
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Text(
-                                        text = "• ${interval.formattedDays()}",
+                                        text = "• ${interval.formattedDays(isEng)}",
                                         color = Color(0xFF9E9E9E),
                                         fontSize = 12.sp
                                     )
@@ -893,5 +893,21 @@ fun FocusScreen(
             },
             containerColor = Color(0xFF1E1E1E)
         )
+    }
+}
+
+fun getLocalizedIntervalLabel(label: String, isEnglish: Boolean): String {
+    val l = label.lowercase()
+    return when {
+        l.contains("workday") || l.contains("jornada") || l.contains("laboral") || l.contains("trabajo") -> {
+            AppStrings.get("interval_workday_label", isEnglish)
+        }
+        l.contains("sleep") || l.contains("dormir") || l.contains("descanso") || l.contains("sueño") || l.contains("noche") || l.contains("rest") -> {
+            AppStrings.get("interval_sleep_label", isEnglish)
+        }
+        l.contains("vespertino") || l.contains("evening") -> {
+            if (isEnglish) "Evening Study" else "Estudio Vespertino"
+        }
+        else -> label
     }
 }

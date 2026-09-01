@@ -53,8 +53,8 @@ data class FocusInterval(
         return String.format(Locale.getDefault(), "%02d:%02d - %02d:%02d", startHour, startMinute, endHour, endMinute)
     }
 
-    fun formattedDays(): String {
-        val daysMap = mapOf(
+    fun formattedDays(isEnglish: Boolean = true): String {
+        val daysMapEs = mapOf(
             Calendar.MONDAY to "L",
             Calendar.TUESDAY to "M",
             Calendar.WEDNESDAY to "X",
@@ -63,9 +63,20 @@ data class FocusInterval(
             Calendar.SATURDAY to "S",
             Calendar.SUNDAY to "D"
         )
-        if (daysOfWeek.size == 7) return "Todos los días"
-        if (daysOfWeek == setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)) return "Lun a Vie"
-        if (daysOfWeek == setOf(Calendar.SATURDAY, Calendar.SUNDAY)) return "Fines de semana"
+        val daysMapEn = mapOf(
+            Calendar.MONDAY to "M",
+            Calendar.TUESDAY to "T",
+            Calendar.WEDNESDAY to "W",
+            Calendar.THURSDAY to "T",
+            Calendar.FRIDAY to "F",
+            Calendar.SATURDAY to "S",
+            Calendar.SUNDAY to "S"
+        )
+        val daysMap = if (isEnglish) daysMapEn else daysMapEs
+
+        if (daysOfWeek.size == 7) return AppStrings.get("all_days", isEnglish)
+        if (daysOfWeek == setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)) return AppStrings.get("mon_to_fri", isEnglish)
+        if (daysOfWeek == setOf(Calendar.SATURDAY, Calendar.SUNDAY)) return AppStrings.get("weekends", isEnglish)
         return daysOfWeek.sorted().mapNotNull { daysMap[it] }.joinToString(" ")
     }
 }

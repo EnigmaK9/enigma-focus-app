@@ -109,7 +109,8 @@ class ComprehensiveFocusUnitTests {
         )
 
         assertEquals("07:30 - 16:30", workday.formattedTimeRange())
-        assertEquals("Lun a Vie", workday.formattedDays())
+        assertEquals("Mon to Fri", workday.formattedDays(isEnglish = true))
+        assertEquals("Lun a Vie", workday.formattedDays(isEnglish = false))
 
         // Monday 07:30 AM -> Active
         val testCalStart = Calendar.getInstance().apply {
@@ -157,7 +158,8 @@ class ComprehensiveFocusUnitTests {
         )
 
         assertEquals("22:30 - 06:30", sleep.formattedTimeRange())
-        assertEquals("Todos los días", sleep.formattedDays())
+        assertEquals("Every day", sleep.formattedDays(isEnglish = true))
+        assertEquals("Todos los días", sleep.formattedDays(isEnglish = false))
 
         // 23:00 (11:00 PM) -> Active
         val cal11pm = Calendar.getInstance().apply {
