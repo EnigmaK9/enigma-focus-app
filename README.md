@@ -19,6 +19,14 @@
 
 ---
 
+## 📱 Screenshots / Capturas de Pantalla
+
+| 🎯 Focus & Schedules | 📱 Apps Management | ⚙️ System & Settings | 🧘 Mindful Breathing / Lock |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/01_focus_screen.png" width="220" alt="Focus & Schedules Screen" /> | <img src="docs/screenshots/02_apps_screen.png" width="220" alt="Apps Blocklist Management" /> | <img src="docs/screenshots/03_settings_screen.png" width="220" alt="System Settings & Language" /> | <img src="docs/screenshots/04_breathing_block_screen.png" width="220" alt="Mindful Breathing Block Screen" /> |
+
+---
+
 ## 🌐 Languages / Idiomas
 - [English Documentation](#-english-overview)
 - [Documentación en Español](#-descripción-en-español)
