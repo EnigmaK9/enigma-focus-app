@@ -79,11 +79,13 @@ When you open a blocked app (such as Instagram or Reddit):
 
 ---
 
-## 6. Bedtime Sleep Reminders
-During the sleep interval (`22:30 - 06:30`):
-- If you use the phone, a gentle floating bedtime popup will appear with a glowing moon.
-- Tap **"Apagar pantalla e ir a dormir"** to lock the device and rest.
-- Tap **"Recordármelo en 10 min"** to snooze the reminder.
+## 6. Aggressive Bedtime Sleep Lockout (`22:30 - 06:30`)
+During your sleep interval:
+- The moment you turn on your screen or unlock the device, a full-screen bedtime lock overlay immediately covers the display.
+- Non-emergency use is capped at **strictly 1 minute (60 seconds)** after completing a 10-second mindful breathing challenge.
+- When 60 seconds elapse, the background watchdog immediately re-locks the screen and returns to Home.
+- Emergency exemptions are active exclusively for emergency phone calls (`InCallUI`/`Dialer`) and alarm clocks (`DeskClock`).
+- Tap **"Apagar pantalla e ir a dormir"** to immediately turn off screen and lock.
 
 ---
 
@@ -108,7 +110,7 @@ On Xiaomi / Poco / Redmi devices, apply these settings to ensure 100% background
 ## 1. Configuración Inicial y Permisos
 Al abrir la app por primera vez, asegúrate de activar:
 1. **Servicio de Accesibilidad**: `Ajustes -> Accesibilidad -> Apps descargadas -> Enigma Focus` y activa el interruptor.
-2. **Escala de Grises (WRITE_SECURE_SETTINGS)**: Conecta el móvil a tu ordenador con la depuración USB activa y ejecuta:
+2. **Escala de Grises (Write Secure Settings)**: Conecta el móvil por USB a tu ordenador con Depuración USB y ejecuta:
    ```bash
    adb shell pm grant com.example.enigmafocus android.permission.WRITE_SECURE_SETTINGS
    ```
@@ -116,21 +118,21 @@ Al abrir la app por primera vez, asegúrate de activar:
 ---
 
 ## 2. Uso del Temporizador y Sesiones Manuales
-- Selecciona la duración que desees: **25 min** (Pomodoro), **1 hora**, **4 horas** o **9h Jornada**.
-- Pulsa **Iniciar Sesión**.
-- Mientras la sesión esté activa, las apps distractoras estarán bloqueadas y verás la cuenta regresiva en tu barra de notificaciones.
-- Para finalizar antes de tiempo, pulsa **Detener Sesión**.
+- Selecciona la duración deseada: **25 min** (Pomodoro), **1 hora**, **4 horas**, o **9h Jornada**.
+- Pulsa **"Iniciar Sesión"** para comenzar.
+- Se activará una notificación persistente con la cuenta regresiva, la pantalla pasará a escala de grises y las apps seleccionadas quedarán bloqueadas.
+- Pulsa **"Detener Sesión"** cuando hayas concluido.
 
 ---
 
 ## 3. Horarios e Intervalos Programados
-Enigma Focus incluye dos horarios predeterminados y activados por defecto:
-1. 💼 **Jornada Laboral**: `07:30 - 16:30` (Lunes a Viernes).
-2. 🌙 **Descanso / Dormir**: `22:30 - 06:30` (Todos los días).
+Enigma Focus incluye dos horarios preconfigurados listos para usar:
+1. **Jornada Laboral**: `07:30 - 16:30` (Lunes a Viernes) — *Activo por defecto*.
+2. **Descanso / Dormir**: `22:30 - 06:30` (Lunes a Domingo) — *Activo por defecto*.
 
-### Añadir o Modificar Horarios:
-- Pulsa el icono de **Editar** (lápiz) en cualquier intervalo para ajustar la hora de inicio/fin o los días activos.
-- Pulsa **"+ Añadir Horario / Intervalo"** para crear nuevos turnos (ej. Estudio vespertino de 18:00 a 20:30).
+### Añadir o Editar Intervalos:
+- Toca el icono de **Editar** en cualquier horario para ajustar horas de inicio/fin o días de la semana.
+- Pulsa **"+ Añadir Horario / Intervalo"** para crear reglas personalizadas (ej. Estudio Vespertino de 18:00 a 20:30).
 
 ---
 
@@ -153,11 +155,13 @@ Cuando intentas abrir una app bloqueada (ej. Instagram o Reddit):
 
 ---
 
-## 6. Recordatorio Nocturno para Dormir
-Durante tu horario de sueño (`22:30 - 06:30`):
-- Si estás usando el móvil, aparecerá un aviso flotante relajante con una luna animada.
+## 6. Bloqueo Nocturno Agresivo para Dormir (`22:30 - 06:30`)
+Durante tu horario de sueño:
+- Al encender la pantalla o desbloquear el teléfono, una pantalla completa de bloqueo de descanso cubre el teléfono inmediatamente.
+- Si requieres interactuar, deberás completar los 10 segundos de respiración consciente para habilitar una pausa de **estrictamente 1 minuto (60s)** de emergencia.
+- Al expirar los 60 segundos o al apagar la pantalla, el sistema re-bloquea automáticamente el teléfono y expulsa al Home.
+- Las llamadas entrantes/salientes de emergencia (`InCallUI`) y alarmas del despertador (`DeskClock`) permanecen accesibles.
 - Pulsa **"Apagar pantalla e ir a dormir"** para apagar la pantalla y descansar.
-- Pulsa **"Recordármelo en 10 min"** para posponer el aviso 10 minutos.
 
 ---
 

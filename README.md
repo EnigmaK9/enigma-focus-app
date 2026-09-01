@@ -35,20 +35,22 @@
    - Toggles true system-wide monochrome mode directly through Android's `Settings.Secure` display daltonizer (no screen overlay filters; pure GPU monochrome).
    - Instant 1-tap manual switch, automated activation during focus sessions, and Quick Settings tile integration.
 2. **🛑 Instant Mindful App Blocker (`TYPE_ACCESSIBILITY_OVERLAY`)**:
-   - Zero-delay interception of distracting apps (Instagram, Reddit, TikTok, X/Twitter, YouTube, Facebook, Twitch, etc.).
+   - Zero-delay interception of distracting apps (Instagram, Reddit, TikTok, X/Twitter, YouTube, Facebook, Twitch, WhatsApp Web, etc.).
    - Displays a calming **10-second Mindful Breathing Circle** (*Inhale, Hold, Exhale*) before granting temporary access.
    - Immune to Xiaomi/MIUI/HyperOS background activity launch restrictions.
 3. **📅 Smart Scheduled Intervals (Multiple Shifts per Day)**:
    - **Workday Shift**: `07:30 - 16:30` (Monday to Friday) by default.
    - **Sleep / Bedtime Schedule**: `22:30 - 06:30` (Every day) with automated nighttime floating moon reminders.
    - Support for custom recurring intervals with days-of-week selection.
-4. **🌙 Bedtime Reminders & Night Nudges**:
-   - Gentle floating sleep popup when phone is used during sleep hours (10:30 PM - 6:30 AM).
-   - 1-tap "Turn off screen & Sleep" action + 10-minute snooze option.
+4. **🌙 Aggressive Bedtime Lockout (`22:30 - 06:30`)**:
+   - Immediate full-device lockout triggered upon screen turn-on (`ACTION_SCREEN_ON`) or unlock (`ACTION_USER_PRESENT`) during bedtime.
+   - Restricts non-emergency interaction to **strictly 1 minute (60 seconds)** following a 10-second mindful breathing challenge.
+   - 300ms watchdog forcibly re-locks the screen and returns Home as soon as the 60 seconds elapse.
+   - Emergency exemptions exclusively for incoming/outgoing phone calls (`InCallUI`/`Dialer`) and alarm clocks (`DeskClock`).
 5. **🛡️ 24/7 Resilient Background Persistence**:
    - Multi-process architecture and battery optimization whitelist.
    - Starts automatically on device reboot (`BootReceiver`).
-   - Strict Mode toggle to prevent bypasses.
+   - Strict Mode toggle to completely disable emergency 1-minute unlocks.
 
 ---
 
@@ -61,16 +63,18 @@
    - Convierte toda la pantalla del teléfono a blanco y negro real mediante los ajustes seguros de Android (`Daltonizer`).
    - Interruptor manual instantáneo de 1 toque, activación automática en sesiones de concentración y mosaico en la barra de notificaciones.
 2. **🛑 Bloqueador Consciente Inmediato (`TYPE_ACCESSIBILITY_OVERLAY`)**:
-   - Intercepta apps distractoras al instante (Instagram, Reddit, TikTok, X, YouTube, etc.).
+   - Intercepta apps distractoras al instante (Instagram, Reddit, TikTok, X, YouTube, WhatsApp Web, etc.).
    - Muestra un **ejercicio guiado de respiración de 10 segundos** (*Inhala, Sostén, Exhala*) antes de dar acceso temporal.
    - Totalmente compatible y resistente contra las restricciones de segundo plano de Xiaomi / MIUI / HyperOS.
 3. **📅 Horarios e Intervalos Programados (Múltiples turnos al día)**:
    - **Jornada Laboral**: `07:30 - 16:30` (Lunes a Viernes) por defecto.
-   - **Descanso Nocturno / Dormir**: `22:30 - 06:30` (Todos los días) con recordatorio emergente de sueño.
+   - **Descanso Nocturno / Dormir**: `22:30 - 06:30` (Todos los días) con bloqueo integral de descanso.
    - Posibilidad de crear y personalizar horarios ilimitados por días de la semana.
-4. **🌙 Recordatorio Nocturno para Dormir**:
-   - Pop-up relajante con luna animada si usas el móvil durante la noche.
-   - Botón directo para apagar la pantalla e ir a dormir + opción de posponer 10 minutos.
+4. **🌙 Bloqueo Nocturno Agresivo para Dormir (`22:30 - 06:30`)**:
+   - Bloqueo total instantáneo al encender la pantalla (`ACTION_SCREEN_ON`) o desbloquear el teléfono (`ACTION_USER_PRESENT`) en horario de descanso.
+   - Límite de interacción de **estrictamente 1 minuto (60s)** tras completar la pausa de respiración de 10 segundos.
+   - Watchdog a 300 ms que re-bloquea y expulsa al Home en cuanto vencen los 60 segundos o al apagar la pantalla (`ACTION_SCREEN_OFF`).
+   - Excepciones exclusivas para llamadas telefónicas de emergencia (`InCallUI`) y alarmas del despertador (`DeskClock`).
 5. **🛡️ Persistencia Continua 24/7**:
    - Sigue funcionando aunque cierres la app de la lista de recientes.
    - Reactivación automática al encender el teléfono (`BootReceiver`).
