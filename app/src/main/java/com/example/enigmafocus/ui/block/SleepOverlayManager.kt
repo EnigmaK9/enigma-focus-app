@@ -102,6 +102,10 @@ object SleepOverlayManager {
         return (now - lastDismissedTime) >= SNOOZE_DURATION_MILLIS
     }
 
+    fun resetDismissedTime() {
+        lastDismissedTime = 0L
+    }
+
     fun showSleepNudge(service: AccessibilityService) {
         if (isSleepOverlayShowing) return
 
