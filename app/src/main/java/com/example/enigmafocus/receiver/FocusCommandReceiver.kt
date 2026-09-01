@@ -11,6 +11,7 @@ import com.example.enigmafocus.data.FocusEventLogger
 import com.example.enigmafocus.data.JsonConfigManager
 import com.example.enigmafocus.manager.FocusSessionManager
 import com.example.enigmafocus.manager.GrayscaleManager
+import com.example.enigmafocus.ui.block.SleepOverlayManager
 import org.json.JSONObject
 
 class FocusCommandReceiver : BroadcastReceiver() {
@@ -32,8 +33,11 @@ class FocusCommandReceiver : BroadcastReceiver() {
         const val ACTION_EXPORT_CONFIG = "com.example.enigmafocus.action.EXPORT_CONFIG"
         const val ACTION_GET_STATUS = "com.example.enigmafocus.action.GET_STATUS"
         const val ACTION_CLEAR_LOGS = "com.example.enigmafocus.action.CLEAR_LOGS"
+        const val ACTION_DISMISS_SLEEP = "com.example.enigmafocus.action.DISMISS_SLEEP"
+        const val ACTION_SET_SLEEP_SCHEDULE = "com.example.enigmafocus.action.SET_SLEEP_SCHEDULE"
 
         const val EXTRA_DURATION_MINUTES = "duration_minutes"
+        const val EXTRA_FOR_TONIGHT = "for_tonight"
         const val EXTRA_ENABLED = "enabled"
         const val EXTRA_PACKAGE = "package"
         const val EXTRA_LANG = "lang"
@@ -142,6 +146,29 @@ class FocusCommandReceiver : BroadcastReceiver() {
                 ACTION_CLEAR_LOGS -> {
                     FocusEventLogger.clearLogs(context)
                     Log.i(TAG, "🗑️ Cleared JSONL event logs")
+                }
+                ACTION_DISMISS_SLEEP -> {
+                    val forTonight = intent.getBooleanExtra(EXTRA_FOR_TONIGHT, false)
+                    val minutes = intent.getIntExtra(EXTRA_DURATION_MINUTES, if (forTonight) 0 else 15)
+                    if (forTonight) {
+                        SleepOverlayManager.dismissForTonight(context)
+                        Log.i(TAG, "🌙 Dismissed sleep overlay for tonight via CLI")
+                    } else {
+                        SleepOverlayManager.snooze(context, minutes)
+                        Log.i(TAG, "🌙 Snoozed sleep overlay for $minutes minutes via CLI")
+                    }
+                }
+                ACTION_SET_SLEEP_SCHEDULE -> {
+                    val enabled = intent.getBooleanExtra(EXTRA_ENABLED, true)
+                    val intervals = AppPreferences.getIntervals().map { interval ->
+                        if (ScheduleEvaluator.isSleepInterval(interval)) interval.copy(isEnabled = enabled) else interval
+                    }
+                    AppPreferences.saveIntervals(intervals)
+                    DeclarativeConfigManager.syncFromPreferences(context)
+                    if (!enabled) {
+                        SleepOverlayManager.dismissForTonight(context)
+                    }
+                    Log.i(TAG, "🌙 Set sleep schedule enabled to $enabled via CLI")
                 }
             }
         } catch (e: Exception) {

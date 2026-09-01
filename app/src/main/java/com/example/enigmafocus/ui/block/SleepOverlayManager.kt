@@ -68,8 +68,8 @@ object SleepOverlayManager {
     private const val TAG = "SleepOverlayManager"
     private var sleepOverlayView: ComposeView? = null
     private var isSleepOverlayShowing = false
-    private var lastDismissedTime = 0L
-    private const val SNOOZE_DURATION_MILLIS = 1 * 60 * 1000L // Strictly 1 minute (60 seconds)
+    private var snoozeUntil = 0L
+    private var isDismissedForTonight = false
 
     private class SleepLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
         private val lifecycleRegistry = LifecycleRegistry(this)
@@ -98,16 +98,38 @@ object SleepOverlayManager {
 
     fun canShowNudge(): Boolean {
         if (isSleepOverlayShowing) return false
+        if (isDismissedForTonight) return false
         val now = System.currentTimeMillis()
-        return (now - lastDismissedTime) >= SNOOZE_DURATION_MILLIS
+        return now >= snoozeUntil
     }
 
     fun resetDismissedTime() {
-        lastDismissedTime = 0L
+        // Only reset if no active snooze or tonight dismissal is in place
+        if (!isDismissedForTonight && System.currentTimeMillis() >= snoozeUntil) {
+            snoozeUntil = 0L
+        }
+    }
+
+    fun resetForNewDay() {
+        isDismissedForTonight = false
+        snoozeUntil = 0L
+    }
+
+    fun snooze(context: Context, minutes: Int = 15) {
+        snoozeUntil = System.currentTimeMillis() + (minutes.toLong() * 60 * 1000L)
+        dismiss(context)
+        Log.i(TAG, "🌙 Sleep overlay snoozed for $minutes minutes")
+    }
+
+    fun dismissForTonight(context: Context) {
+        isDismissedForTonight = true
+        dismiss(context)
+        Log.i(TAG, "🌙 Sleep overlay dismissed for tonight")
     }
 
     fun showSleepNudge(service: AccessibilityService) {
         if (isSleepOverlayShowing) return
+        if (!canShowNudge()) return
 
         try {
             val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -142,8 +164,11 @@ object SleepOverlayManager {
                                     service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
                                 }
                             },
-                            onEmergencyOneMin = {
-                                dismiss(service)
+                            onEmergencySnooze = { minutes ->
+                                snooze(service, minutes)
+                            },
+                            onDismissTonight = {
+                                dismissForTonight(service)
                             }
                         )
                     }
@@ -162,7 +187,6 @@ object SleepOverlayManager {
     fun dismiss(context: Context) {
         if (!isSleepOverlayShowing || sleepOverlayView == null) return
 
-        lastDismissedTime = System.currentTimeMillis()
         try {
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             windowManager.removeView(sleepOverlayView)
@@ -173,7 +197,7 @@ object SleepOverlayManager {
             currentLifecycleOwner = null
             sleepOverlayView = null
             isSleepOverlayShowing = false
-            Log.i(TAG, "Sleep overlay dismissed for 1 min")
+            Log.i(TAG, "Sleep overlay view removed")
         }
     }
 }
@@ -182,7 +206,8 @@ object SleepOverlayManager {
 fun SleepNudgeScreen(
     isEng: Boolean = true,
     onGoToSleep: () -> Unit,
-    onEmergencyOneMin: () -> Unit
+    onEmergencySnooze: (Int) -> Unit,
+    onDismissTonight: () -> Unit
 ) {
     val startTime = androidx.compose.runtime.saveable.rememberSaveable { System.currentTimeMillis() }
     var secondsLeft by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(10) }
@@ -361,7 +386,7 @@ fun SleepNudgeScreen(
                     onClick = onGoToSleep,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .height(50.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3F51B5))
                 ) {
@@ -377,47 +402,47 @@ fun SleepNudgeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                val isStrict = AppPreferences.isStrictModeEnabled()
+                // Secondary Action: 15 min snooze (enabled after 10s breathing)
+                OutlinedButton(
+                    onClick = { onEmergencySnooze(15) },
+                    enabled = secondsLeft == 0,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = if (secondsLeft > 0) {
+                            String.format(AppStrings.get("btn_sleep_snooze_wait", isEng), secondsLeft)
+                        } else {
+                            AppStrings.get("btn_sleep_snooze_15m", isEng)
+                        },
+                        color = if (secondsLeft == 0) Color(0xFFFFB74D) else Color(0xFF666666),
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-                if (!isStrict) {
-                    // Secondary Action: Emergency 1 min (disabled during 10s breathing)
-                    OutlinedButton(
-                        onClick = onEmergencyOneMin,
-                        enabled = secondsLeft == 0,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(14.dp)
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Tertiary Action: Unlock for tonight
+                if (secondsLeft == 0) {
+                    androidx.compose.material3.TextButton(
+                        onClick = onDismissTonight,
+                        modifier = Modifier.fillMaxWidth().height(40.dp)
                     ) {
                         Text(
-                            text = if (secondsLeft > 0) {
-                                String.format(AppStrings.get("btn_sleep_snooze_wait", isEng), secondsLeft)
-                            } else {
-                                AppStrings.get("btn_sleep_snooze", isEng)
-                            },
-                            color = if (secondsLeft == 0) Color(0xFFFFB74D) else Color(0xFF555555),
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.SemiBold
+                            text = AppStrings.get("btn_sleep_dismiss_tonight", isEng),
+                            color = Color(0xFF90CAF9),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF241515))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = AppStrings.get("sleep_strict_warning", isEng),
-                            color = Color(0xFFFF8A80),
-                            fontSize = 12.sp
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(40.dp))
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }

@@ -58,6 +58,8 @@ object AppStrings {
         "btn_sleep_lock" to "Turn off screen & Go to sleep",
         "btn_sleep_snooze" to "Use 1 min emergency pause",
         "btn_sleep_snooze_wait" to "Emergency 1 min (Wait %ds)",
+        "btn_sleep_snooze_15m" to "Pause night block (15 min)",
+        "btn_sleep_dismiss_tonight" to "Unlock for tonight",
         "sleep_strict_warning" to "Strict Mode Active: Sleep unlocks are disabled",
 
         // Breathing Block Screen
@@ -155,10 +157,12 @@ object AppStrings {
 
         // Bedtime Pop-up
         "sleep_nudge_title" to "¡Hora de dormir y descansar! 🌙",
-        "sleep_nudge_body" to "El horario de sueño está activo (10:30 PM - 6:30 AM).\n\nEl uso nocturno bloquea la melatonina y altera tu descanso. Solo se permite 1 minuto de interacción de emergencia.",
+        "sleep_nudge_body" to "El horario de sueño está activo (10:30 PM - 6:30 AM).\n\nEl uso nocturno bloquea la melatonina y altera tu descanso.",
         "btn_sleep_lock" to "Apagar pantalla e ir a dormir",
-        "btn_sleep_snooze" to "Usar 1 min de emergencia",
-        "btn_sleep_snooze_wait" to "Emergencia 1 min (Espera %d s)",
+        "btn_sleep_snooze" to "Pausa de emergencia (1 min)",
+        "btn_sleep_snooze_wait" to "Pausa 1 min (Espera %d s)",
+        "btn_sleep_snooze_15m" to "Pausar bloqueo nocturno (15 min)",
+        "btn_sleep_dismiss_tonight" to "Desbloquear por esta noche",
         "sleep_strict_warning" to "Modo Estricto Activo: Desbloqueos nocturnos deshabilitados",
 
         // Breathing Block Screen

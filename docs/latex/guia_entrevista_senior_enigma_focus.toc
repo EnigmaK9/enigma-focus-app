@@ -1,0 +1,78 @@
+\babel@toc {spanish}{}\relax 
+\contentsline {chapter}{\numberline {1}Introducción y Filosofía Unix}{3}{chapter.1}%
+\contentsline {section}{\numberline {1.1}La Crisis de la Atención Digital y el Diseño Dopaminérgico}{3}{section.1.1}%
+\contentsline {section}{\numberline {1.2}La Filosofía Unix Aplicada al Software Móvil}{3}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Análisis Comparativo de Mercado}{4}{section.1.3}%
+\contentsline {chapter}{\numberline {2}Arquitectura y MVI/MVVM}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Clean Architecture y Separación de Capas}{5}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Estructura del Estado Inmutable (\texttt {MainUiState})}{5}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Patrón de Repositorio con Fallback en Memoria para Testing}{6}{section.2.3}%
+\contentsline {chapter}{\numberline {3}Android Internals y Hardware}{7}{chapter.3}%
+\contentsline {section}{\numberline {3.1}AccessibilityService vs. UsageStatsManager: Análisis de Latencia}{7}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}El Problema de UsageStatsManager}{7}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}La Solución: AccessibilityService en Tiempo Real}{7}{subsection.3.1.2}%
+\contentsline {section}{\numberline {3.2}Renderizado de Jetpack Compose en TYPE\_ACCESSIBILITY\_OVERLAY}{7}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Control de Hardware GPU: SurfaceFlinger y Daltonizer}{8}{section.3.3}%
+\contentsline {chapter}{\numberline {4}Motor de Bloqueo y Watchdog}{9}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Bucle Watchdog de 300 ms y Detección de Fugas}{9}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Bloqueo Nocturno Agresivo: Algoritmo de Cruce de Medianoche}{9}{section.4.2}%
+\contentsline {chapter}{\numberline {5}Interoperabilidad Unix y CLI}{11}{chapter.5}%
+\contentsline {section}{\numberline {5.1}La Interfaz Universal de Texto: Configuración Declarativa en JSON}{11}{section.5.1}%
+\contentsline {section}{\numberline {5.2}El Protocolo CLI Broadcast: Control Total por Terminal}{12}{section.5.2}%
+\contentsline {chapter}{\numberline {6}Internacionalización Dinámica}{13}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Detección Automática con Soporte Multilingüe}{13}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Coherencia Total en Componentes Dinámicos}{13}{section.6.2}%
+\contentsline {chapter}{\numberline {7}Concurrencia y Rendimiento}{14}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Manejo de Corrutinas y Ciclo de Vida en Servicios}{14}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Supervivencia ante Optimizadores Agresivos (Xiaomi MIUI / HyperOS / Samsung OneUI)}{14}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Búsqueda Acotada de URLs en Navegadores Web (\texttt {maxDepth = 6})}{14}{section.7.3}%
+\contentsline {chapter}{\numberline {8}Testing Automatizado}{16}{chapter.8}%
+\contentsline {section}{\numberline {8.1}La Suite de Pruebas Automatizadas}{16}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Prueba de Estrés Multihilo: 1,000 Peticiones Concurrentes}{16}{section.8.2}%
+\contentsline {chapter}{\numberline {9}25 Preguntas STAR de Entrevista}{18}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Pregunta 1: Inyección de Compose en WindowManager y Fugas de Memoria}{18}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Pregunta 2: Control de Hardware GPU vs. Shaders de Software}{18}{section.9.2}%
+\contentsline {section}{\numberline {9.3}Pregunta 3: Coexistencia con la Pantalla de Bloqueo del Sistema (Keyguard)}{19}{section.9.3}%
+\contentsline {section}{\numberline {9.4}Pregunta 4: Concurrencia y Estado Inmutable en Jetpack Compose}{19}{section.9.4}%
+\contentsline {section}{\numberline {9.5}Pregunta 5: Optimización de CPU en Árboles de Accesibilidad Complejos}{20}{section.9.5}%
+\contentsline {section}{\numberline {9.6}Pregunta 6: Arquitectura IPC sin Dependencias de Red}{21}{section.9.6}%
+\contentsline {section}{\numberline {9.7}Pregunta 7: Pruebas Unitarias de Cruce de Medianoche sin Emulador}{21}{section.9.7}%
+\contentsline {section}{\numberline {9.8}Pregunta 8: Manejo de Low Memory Killer (LMK) de Android}{21}{section.9.8}%
+\contentsline {section}{\numberline {9.9}Pregunta 9: Serialización Declarativa y Resiliencia ante Corrupción}{21}{section.9.9}%
+\contentsline {section}{\numberline {9.10}Pregunta 10: Estrategia de Internacionalización sin Recrear Actividades}{22}{section.9.10}%
+\contentsline {section}{\numberline {9.11}Pregunta 11: Depuración de ANRs y Detección de Bloqueos en el Main Thread}{23}{section.9.11}%
+\contentsline {section}{\numberline {9.12}Pregunta 12: Seguridad y Privacidad: Zero-Cloud vs. Telemetría Remota}{23}{section.9.12}%
+\contentsline {section}{\numberline {9.13}Pregunta 13: Shizuku Framework vs. Comandos ADB Tradicionales}{23}{section.9.13}%
+\contentsline {section}{\numberline {9.14}Pregunta 14: Optimización de Tamaño de APK y Reducción de Huella R8}{23}{section.9.14}%
+\contentsline {section}{\numberline {9.15}Pregunta 15: Manejo de Doze Mode y Alarms en Android 14+}{24}{section.9.15}%
+\contentsline {section}{\numberline {9.16}Pregunta 16: Interoperabilidad con Navegadores Multiproceso}{25}{section.9.16}%
+\contentsline {section}{\numberline {9.17}Pregunta 17: Prevención de Fugas de Memoria en Coroutine Scopes}{25}{section.9.17}%
+\contentsline {section}{\numberline {9.18}Pregunta 18: Testing de Concurrencia con CountDownLatch vs. Coroutine TestDispatcher}{25}{section.9.18}%
+\contentsline {section}{\numberline {9.19}Pregunta 19: Detección y Coexistencia con Launchers de Fabricantes}{25}{section.9.19}%
+\contentsline {section}{\numberline {9.20}Pregunta 20: Arquitectura de Configuración Declarativa con Hot-Reload}{26}{section.9.20}%
+\contentsline {section}{\numberline {9.21}Pregunta 21: Modelado de Amenazas de Seguridad (STRIDE) en Servicios de Accesibilidad}{27}{section.9.21}%
+\contentsline {section}{\numberline {9.22}Pregunta 22: Profiling de Batería con Batterystats e Historian}{27}{section.9.22}%
+\contentsline {section}{\numberline {9.23}Pregunta 23: Estrategia de Migración de SharedPreferences a Proto DataStore}{27}{section.9.23}%
+\contentsline {section}{\numberline {9.24}Pregunta 24: Arquitectura de Componentes en Material Design 3 y Compose}{28}{section.9.24}%
+\contentsline {section}{\numberline {9.25}Pregunta 25: Gestión de Permisos Dinámicos y Degradación Elegante}{28}{section.9.25}%
+\contentsline {chapter}{\numberline {10}System Design Deep Dive}{29}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Arquitectura para Flotas Empresariales y MDM (Enterprise Mobility Management)}{29}{section.10.1}%
+\contentsline {section}{\numberline {10.2}Diagrama de Flujo del Motor de Sincronización y Bloqueo}{29}{section.10.2}%
+\contentsline {chapter}{\numberline {11}Ejercicios de Live Coding}{31}{chapter.11}%
+\contentsline {section}{\numberline {11.1}Ejercicio 1: Búsqueda Recursiva Acotada en Árboles de Vistas}{31}{section.11.1}%
+\contentsline {section}{\numberline {11.2}Ejercicio 2: Rate Limiter y Debouncer Thread-Safe en Kotlin}{31}{section.11.2}%
+\contentsline {section}{\numberline {11.3}Ejercicio 3: Validador Defensivo de Esquemas JSON Declarativos}{33}{section.11.3}%
+\contentsline {section}{\numberline {11.4}Ejercicio 4: Evaluador de Intervalos de Tiempo Puros con Días de la Semana}{33}{section.11.4}%
+\contentsline {chapter}{\numberline {12}Glosario y Comandos DevOps}{35}{chapter.12}%
+\contentsline {section}{\numberline {12.1}Comandos de Diagnóstico de Bajo Nivel con ADB}{35}{section.12.1}%
+\contentsline {section}{\numberline {12.2}Automatización de Compilación y Testing en CI/CD}{35}{section.12.2}%
+\contentsline {chapter}{\numberline {13}Manual de Debugging y Profiling}{36}{chapter.13}%
+\contentsline {section}{\numberline {13.1}Análisis de Fugas de Memoria con Memory Profiler y LeakCanary}{36}{section.13.1}%
+\contentsline {section}{\numberline {13.2}Inspección de Cuadros Congelados (Jank) con Perfetto y Systrace}{36}{section.13.2}%
+\contentsline {section}{\numberline {13.3}Verificación de Huella de Red Cero (Zero-Network Footprint)}{37}{section.13.3}%
+\contentsline {chapter}{\numberline {14}Seguridad y ProGuard}{38}{chapter.14}%
+\contentsline {section}{\numberline {14.1}Modelo de Seguridad Local y Almacenamiento Cifrado}{38}{section.14.1}%
+\contentsline {section}{\numberline {14.2}Reglas de Ofuscación y Shrinking con ProGuard / R8}{38}{section.14.2}%
+\contentsline {chapter}{\numberline {15}Conclusiones y Estrategia}{39}{chapter.15}%
+\contentsline {section}{\numberline {15.1}Resumen de Logros de Ingeniería}{39}{section.15.1}%
+\contentsline {section}{\numberline {15.2}Estrategia de Presentación en la Entrevista Técnica}{39}{section.15.2}%
