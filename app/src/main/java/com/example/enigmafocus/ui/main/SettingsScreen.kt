@@ -170,12 +170,14 @@ fun SettingsScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val currentPref = state.selectedLanguagePreference
+
                     FilterChip(
-                        selected = isEng,
-                        onClick = { viewModel.setLanguage("en") },
-                        label = { Text("English (Default)") },
+                        selected = currentPref == "system",
+                        onClick = { viewModel.setLanguage("system") },
+                        label = { Text(AppStrings.get("lang_system", isEng), fontSize = 12.sp) },
                         modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Color(0xFF4CAF50),
@@ -186,9 +188,22 @@ fun SettingsScreen(
                     )
 
                     FilterChip(
-                        selected = !isEng,
+                        selected = currentPref == "en",
+                        onClick = { viewModel.setLanguage("en") },
+                        label = { Text(AppStrings.get("lang_en", isEng), fontSize = 12.sp) },
+                        modifier = Modifier.weight(1f),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF4CAF50),
+                            selectedLabelColor = Color.White,
+                            containerColor = Color(0xFF2C2C2C),
+                            labelColor = Color(0xFFB0B0B0)
+                        )
+                    )
+
+                    FilterChip(
+                        selected = currentPref == "es",
                         onClick = { viewModel.setLanguage("es") },
-                        label = { Text("Español") },
+                        label = { Text(AppStrings.get("lang_es", isEng), fontSize = 12.sp) },
                         modifier = Modifier.weight(1f),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Color(0xFF4CAF50),

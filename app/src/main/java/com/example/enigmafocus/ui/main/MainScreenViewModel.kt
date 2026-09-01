@@ -32,6 +32,7 @@ data class MainUiState(
     val isAlwaysBlockEnabled: Boolean = true,
     val isStrictModeEnabled: Boolean = false,
     val isEnglish: Boolean = true,
+    val selectedLanguagePreference: String = "system",
     val isAntiImpulseEnabled: Boolean = false,
     val scheduledIntervals: List<FocusInterval> = emptyList(),
     val activeScheduledInterval: FocusInterval? = null,
@@ -130,6 +131,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         val alwaysBlock = AppPreferences.isAlwaysBlockEnabled()
         val strict = AppPreferences.isStrictModeEnabled()
         val isEng = AppPreferences.isEnglish()
+        val selectedLang = AppPreferences.getSelectedLanguagePreference()
         val antiImpulse = AppPreferences.isAntiImpulseEnabled()
         val intervals = AppPreferences.getIntervals()
         val activeInterval = AppPreferences.getActiveScheduledInterval()
@@ -145,6 +147,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
                 isAlwaysBlockEnabled = alwaysBlock,
                 isStrictModeEnabled = strict,
                 isEnglish = isEng,
+                selectedLanguagePreference = selectedLang,
                 isAntiImpulseEnabled = antiImpulse,
                 scheduledIntervals = intervals,
                 activeScheduledInterval = activeInterval
@@ -213,6 +216,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setLanguage(lang: String) {
         AppPreferences.setAppLanguage(lang)
+        refreshState()
     }
 
     fun setAntiImpulse(enabled: Boolean) {

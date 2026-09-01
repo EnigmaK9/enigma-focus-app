@@ -106,7 +106,7 @@ object AppPreferences {
             prefs.edit().putBoolean(KEY_AUTO_GRAYSCALE, true).apply()
         }
         if (!prefs.contains(KEY_APP_LANGUAGE)) {
-            prefs.edit().putString(KEY_APP_LANGUAGE, "en").apply() // English by default
+            prefs.edit().putString(KEY_APP_LANGUAGE, "system").apply() // Detect system language by default
         }
         if (!prefs.contains(KEY_ANTI_IMPULSE)) {
             prefs.edit().putBoolean(KEY_ANTI_IMPULSE, false).apply()
@@ -121,14 +121,24 @@ object AppPreferences {
         _autoGrayscaleFlow.value = prefs.getBoolean(KEY_AUTO_GRAYSCALE, true)
         _alwaysBlockFlow.value = prefs.getBoolean(KEY_ALWAYS_BLOCK, true)
         _strictModeFlow.value = prefs.getBoolean(KEY_STRICT_MODE, false)
-        _languageFlow.value = prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
+        _languageFlow.value = getAppLanguage()
         _antiImpulseFlow.value = prefs.getBoolean(KEY_ANTI_IMPULSE, false)
 
         loadIntervals()
     }
 
+    fun getSystemLanguage(): String {
+        val sysLang = java.util.Locale.getDefault().language.lowercase()
+        return if (sysLang.startsWith("es")) "es" else "en"
+    }
+
+    fun getSelectedLanguagePreference(): String {
+        return prefs.getString(KEY_APP_LANGUAGE, "system") ?: "system"
+    }
+
     fun getAppLanguage(): String {
-        return prefs.getString(KEY_APP_LANGUAGE, "en") ?: "en"
+        val pref = prefs.getString(KEY_APP_LANGUAGE, "system") ?: "system"
+        return if (pref == "system") getSystemLanguage() else pref
     }
 
     fun isEnglish(): Boolean {
@@ -137,7 +147,7 @@ object AppPreferences {
 
     fun setAppLanguage(language: String) {
         prefs.edit().putString(KEY_APP_LANGUAGE, language).apply()
-        _languageFlow.value = language
+        _languageFlow.value = if (language == "system") getSystemLanguage() else language
     }
 
     fun isAntiImpulseEnabled(): Boolean {
