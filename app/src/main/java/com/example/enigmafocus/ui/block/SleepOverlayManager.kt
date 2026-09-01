@@ -39,6 +39,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,7 +69,7 @@ object SleepOverlayManager {
     private var sleepOverlayView: ComposeView? = null
     private var isSleepOverlayShowing = false
     private var lastDismissedTime = 0L
-    private const val SNOOZE_DURATION_MILLIS = 10 * 60 * 1000L // 10 minutes
+    private const val SNOOZE_DURATION_MILLIS = 1 * 60 * 1000L // Strictly 1 minute (60 seconds)
 
     private class SleepLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
         private val lifecycleRegistry = LifecycleRegistry(this)
@@ -112,7 +113,8 @@ object SleepOverlayManager {
                 height = WindowManager.LayoutParams.MATCH_PARENT
                 type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
                 flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN
                 format = PixelFormat.TRANSLUCENT
                 gravity = Gravity.CENTER
             }
@@ -136,7 +138,7 @@ object SleepOverlayManager {
                                     service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
                                 }
                             },
-                            onSnooze = {
+                            onEmergencyOneMin = {
                                 dismiss(service)
                             }
                         )
@@ -147,7 +149,7 @@ object SleepOverlayManager {
             windowManager.addView(composeView, layoutParams)
             sleepOverlayView = composeView
             isSleepOverlayShowing = true
-            Log.i(TAG, "🌙 Sleep reminder overlay displayed on screen")
+            Log.i(TAG, "🌙 Aggressive sleep lock overlay displayed on screen")
         } catch (e: Exception) {
             Log.e(TAG, "Error displaying sleep overlay", e)
         }
@@ -167,7 +169,7 @@ object SleepOverlayManager {
             currentLifecycleOwner = null
             sleepOverlayView = null
             isSleepOverlayShowing = false
-            Log.i(TAG, "Sleep overlay dismissed")
+            Log.i(TAG, "Sleep overlay dismissed for 1 min")
         }
     }
 }
@@ -176,14 +178,38 @@ object SleepOverlayManager {
 fun SleepNudgeScreen(
     isEng: Boolean = true,
     onGoToSleep: () -> Unit,
-    onSnooze: () -> Unit
+    onEmergencyOneMin: () -> Unit
 ) {
+    val startTime = androidx.compose.runtime.saveable.rememberSaveable { System.currentTimeMillis() }
+    var secondsLeft by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(10) }
+    var breathingPhase by androidx.compose.runtime.saveable.rememberSaveable {
+        androidx.compose.runtime.mutableStateOf(
+            if (isEng) "Inhale deeply through your nose" else "Inhala profundamente por la nariz"
+        )
+    }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        while (true) {
+            val elapsed = (System.currentTimeMillis() - startTime) / 1000
+            val remaining = (10 - elapsed).coerceAtLeast(0).toInt()
+            secondsLeft = remaining
+            breathingPhase = when (remaining) {
+                in 8..10 -> if (isEng) "Inhale deeply through your nose" else "Inhala profundamente por la nariz"
+                in 5..7 -> if (isEng) "Hold your breath calmly" else "Sostén el aire con calma"
+                in 1..4 -> if (isEng) "Exhale slowly and release tension" else "Exhala suavemente y suelta tensión"
+                else -> if (isEng) "Take a conscious choice" else "Toma una decisión consciente"
+            }
+            if (remaining <= 0) break
+            kotlinx.coroutines.delay(250)
+        }
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "moonGlow")
     val moonScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
+        initialValue = 0.90f,
+        targetValue = 1.12f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = FastOutSlowInEasing),
+            animation = tween(3500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "moonScale"
@@ -191,100 +217,203 @@ fun SleepNudgeScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xEB070A12)
+        color = Color(0xF2060911)
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF111728)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            // Header Badge
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = 16.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF19233A)),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    // Glowing Moon Icon
-                    Box(
-                        modifier = Modifier
-                            .size(90.dp)
-                            .scale(moonScale)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    colors = listOf(Color(0xFF3F51B5), Color(0xFF1A237E))
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.Bedtime,
-                            contentDescription = "Sleep",
+                            contentDescription = null,
                             tint = Color(0xFFFFE082),
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isEng) "🌙 Sleep Mode Active (22:30 - 06:30)" else "🌙 Horario de Sueño Activo (22:30 - 06:30)",
+                            color = Color(0xFFFFE082),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                    Text(
-                        text = AppStrings.get("sleep_nudge_title", isEng),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
+                Text(
+                    text = AppStrings.get("sleep_nudge_title", isEng),
+                    style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = AppStrings.get("sleep_nudge_body", isEng),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFC5CAE9),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
 
-                    Text(
-                        text = AppStrings.get("sleep_nudge_body", isEng),
-                        fontSize = 14.sp,
-                        color = Color(0xFFC5CAE9),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 20.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(26.dp))
-
-                    // Primary Action: Lock and Sleep
-                    Button(
-                        onClick = onGoToSleep,
+            // Central Moon & Mindful Breathing Circle
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(190.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Outer pulsating halo
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5C6BC0))
+                            .size(180.dp)
+                            .scale(moonScale)
+                            .clip(CircleShape)
+                            .background(Color(0xFF3F51B5).copy(alpha = 0.22f))
+                    )
+
+                    // Middle ring
+                    Box(
+                        modifier = Modifier
+                            .size(140.dp)
+                            .scale(moonScale * 0.94f)
+                            .clip(CircleShape)
+                            .background(Color(0xFF303F9F).copy(alpha = 0.35f))
+                    )
+
+                    // Core Circle
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (secondsLeft > 0) Color(0xFF3F51B5) else Color(0xFF1A237E)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.PowerSettingsNew, contentDescription = null, tint = Color.White)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(AppStrings.get("btn_sleep_lock", isEng), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (secondsLeft > 0) {
+                                Text(
+                                    text = "${secondsLeft}s",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = if (isEng) "Breathe" else "Respira",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFC5CAE9)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Bedtime,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFFE082),
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                    // Secondary Action: Snooze 10 min
-                    OutlinedButton(
-                        onClick = onSnooze,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(AppStrings.get("btn_sleep_snooze", isEng), fontSize = 13.sp, color = Color(0xFF9FA8DA))
+                Text(
+                    text = breathingPhase,
+                    style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (secondsLeft > 0) Color(0xFF9FA8DA) else Color(0xFFFFE082),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            // Bottom Action Buttons
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Primary Action: Turn off screen & Sleep
+                Button(
+                    onClick = onGoToSleep,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3F51B5))
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PowerSettingsNew, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = AppStrings.get("btn_sleep_lock", isEng),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val isStrict = AppPreferences.isStrictModeEnabled()
+
+                if (!isStrict) {
+                    // Secondary Action: Emergency 1 min (disabled during 10s breathing)
+                    OutlinedButton(
+                        onClick = onEmergencyOneMin,
+                        enabled = secondsLeft == 0,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(
+                            text = if (secondsLeft > 0) {
+                                String.format(AppStrings.get("btn_sleep_snooze_wait", isEng), secondsLeft)
+                            } else {
+                                AppStrings.get("btn_sleep_snooze", isEng)
+                            },
+                            color = if (secondsLeft == 0) Color(0xFFFFB74D) else Color(0xFF555555),
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF241515))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = AppStrings.get("sleep_strict_warning", isEng),
+                            color = Color(0xFFFF8A80),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }

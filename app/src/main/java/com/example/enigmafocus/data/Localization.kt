@@ -53,10 +53,12 @@ object AppStrings {
         "anti_impulse_desc" to "Requires a 60-second reflection countdown before stopping focus",
 
         // Bedtime Pop-up
-        "sleep_nudge_title" to "Time to sleep! 🌙",
-        "sleep_nudge_body" to "Your sleep schedule (10:30 PM - 6:30 AM) is active.\n\nScreen light disrupts melatonin and deep rest. Put the phone down and give your body the rest it deserves.",
+        "sleep_nudge_title" to "Rest & Sleep Hours 🌙",
+        "sleep_nudge_body" to "Sleep schedule is active (10:30 PM - 6:30 AM).\n\nNight screen usage disrupts melatonin and recovery. You are only allowed a 1-minute emergency interaction.",
         "btn_sleep_lock" to "Turn off screen & Go to sleep",
-        "btn_sleep_snooze" to "Remind me in 10 min",
+        "btn_sleep_snooze" to "Use 1 min emergency pause",
+        "btn_sleep_snooze_wait" to "Emergency 1 min (Wait %ds)",
+        "sleep_strict_warning" to "Strict Mode Active: Sleep unlocks are disabled",
 
         // Breathing Block Screen
         "block_access_to" to "Access Blocked:",
@@ -149,10 +151,12 @@ object AppStrings {
         "anti_impulse_desc" to "Exige 60 segundos de espera reflexiva antes de detener el enfoque",
 
         // Bedtime Pop-up
-        "sleep_nudge_title" to "¡Es hora de ir a dormir! 🌙",
-        "sleep_nudge_body" to "Tu horario de descanso (10:30 PM - 6:30 AM) está activo.\n\nLa luz de la pantalla reduce la melatonina y altera tu descanso. Deja el teléfono y dale a tu cuerpo la noche que merece.",
+        "sleep_nudge_title" to "¡Hora de dormir y descansar! 🌙",
+        "sleep_nudge_body" to "El horario de sueño está activo (10:30 PM - 6:30 AM).\n\nEl uso nocturno bloquea la melatonina y altera tu descanso. Solo se permite 1 minuto de interacción de emergencia.",
         "btn_sleep_lock" to "Apagar pantalla e ir a dormir",
-        "btn_sleep_snooze" to "Recordármelo en 10 min",
+        "btn_sleep_snooze" to "Usar 1 min de emergencia",
+        "btn_sleep_snooze_wait" to "Emergencia 1 min (Espera %d s)",
+        "sleep_strict_warning" to "Modo Estricto Activo: Desbloqueos nocturnos deshabilitados",
 
         // Breathing Block Screen
         "block_access_to" to "Acceso bloqueado:",
