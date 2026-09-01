@@ -1,0 +1,165 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\geometry{margin=2.0cm, headheight=14.5pt}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+% Color Palette
+\definecolor{primaryDark}{HTML}{0F1412}
+\definecolor{accentGreen}{HTML}{2E7D32}
+\definecolor{accentLightGreen}{HTML}{4CAF50}
+\definecolor{codeBg}{HTML}{F5F7F8}
+\definecolor{codeBorder}{HTML}{CFD8DC}
+\definecolor{textDark}{HTML}{212121}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{accentGreen}{\textbf{Enigma Focus} — Manual de Usuario}}
+\lhead{\textcolor{textDark}{Guía Oficial de Operación y Configuración}}
+\rfoot{\thepage}
+
+\titleformat{\section}{\Large\bfseries\color{accentGreen}}{\thesection.}{0.5em}{}[\titlerule]
+\titleformat{\subsection}{\large\bfseries\color{primaryDark}}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\bfseries\color{textDark}}{\thesubsubsection.}{0.5em}{}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accentGreen,
+    filecolor=accentGreen,
+    urlcolor=accentGreen
+}
+
+\lstset{
+    backgroundcolor=\color{codeBg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeBorder},
+    keywordstyle=\color{accentGreen}\bfseries,
+    commentstyle=\color{gray},
+    stringstyle=\color{primaryDark},
+    showstringspaces=false
+}
+
+\begin{document}
+
+\begin{center}
+    {\Huge \textbf{\color{primaryDark}Enigma Focus}}\\[0.3cm]
+    {\Large \textbf{\color{accentGreen}Manual Completo de Usuario y Referencia Técnica}}\\[0.2cm]
+    \textit{Herramienta de Enfoque, Bloqueo Consciente de Apps y Desconexión Digital}\\[0.4cm]
+    \rule{\linewidth}{1.5pt}
+\end{center}
+
+\vspace{0.3cm}
+
+\section{Introducción}
+\textbf{Enigma Focus} es una aplicación de productividad y bienestar digital para Android diseñada bajo la filosofía Unix: \textit{hacer una sola cosa de manera impecable}. Te ayuda a recuperar tu tiempo eliminando la estimulación visual dopaminérgica y bloqueando las distracciones compulsivas mediante escala de grises por hardware, barreras de respiración consciente y bloqueo nocturno estricto.
+
+\begin{tcolorbox}[colback=codeBg,colframe=accentGreen,title=\textbf{Características Principales}]
+\begin{itemize}[noitemsep]
+    \item \textbf{Bloqueo Instantáneo por Accesibilidad}: Detección en menos de 20 ms sin consumo excesivo de batería.
+    \item \textbf{Reto de Respiración Consciente}: 10 segundos guiados (Inhalar, Sostener, Exhalar) antes de desbloquear.
+    \item \textbf{Escala de Grises por Hardware (GPU)}: Modo monocromático real sin filtros de software pesados.
+    \item \textbf{Bloqueo Nocturno Agresivo (22:30 a 06:30)}: Límite estricto de 1 minuto de emergencia en horas de descanso.
+    \item \textbf{Filosofía Unix y Comandos CLI}: Control total mediante scripts, Termux, Tasker y ADB.
+\end{itemize}
+\end{tcolorbox}
+
+\section{Configuración Inicial y Permisos}
+
+Para que Enigma Focus opere con máxima eficacia, requiere los siguientes permisos:
+
+\subsection{1. Servicio de Accesibilidad}
+Es el motor principal para detectar cuándo se abre una aplicación bloqueada o un sitio web distractor en navegadores:
+\begin{enumerate}[noitemsep]
+    \item Abre \textbf{Ajustes del Teléfono} $\rightarrow$ \textbf{Accesibilidad} $\rightarrow$ \textbf{Apps Descargadas / Servicios Instalados}.
+    \item Selecciona \textbf{Enigma Focus} y activa el interruptor.
+\end{enumerate}
+
+\subsection{2. Permiso de Escala de Grises (WRITE\_SECURE\_SETTINGS)}
+Permite a la aplicación activar la escala de grises directamente en la GPU del sistema. Conecta el móvil a un PC con depuración USB habilitada y ejecuta:
+\begin{lstlisting}[language=bash]
+adb shell pm grant com.example.enigmafocus android.permission.WRITE_SECURE_SETTINGS
+\end{lstlisting}
+
+\section{Modos de Uso y Funcionalidades}
+
+\subsection{Temporizador de Enfoque Manual}
+En la pestaña principal (\textbf{Focus}):
+\begin{itemize}
+    \item Selecciona la duración deseada: \textbf{25 min} (Pomodoro), \textbf{1 hora}, \textbf{4 horas}, o \textbf{9h Jornada}.
+    \item Pulsa \textbf{Iniciar Sesión}. Se activará la escala de grises (si está habilitada), la notificación con cuenta regresiva continua y el bloqueo de apps.
+    \item Para finalizar anticipadamente, pulsa \textbf{Detener Sesión}.
+\end{itemize}
+
+\subsection{Horarios e Intervalos Programados}
+Enigma Focus incluye dos horarios predeterminados:
+\begin{enumerate}
+    \item \textbf{Jornada Laboral}: \texttt{07:30 - 16:30} (Lunes a Viernes).
+    \item \textbf{Descanso / Dormir}: \texttt{22:30 - 06:30} (Todos los días).
+\end{enumerate}
+Puedes pulsar el botón \textbf{Editar} para cambiar horas o días, o pulsar \textbf{+ Añadir Horario} para crear intervalos personalizados (ej. Estudio Vespertino de 18:00 a 20:30).
+
+\subsection{Pantalla de Respiración Consciente}
+Al abrir una app bloqueada (como Instagram, TikTok o Reddit), se despliega de inmediato la pantalla oscura de enfoque:
+\begin{enumerate}
+    \item \textbf{Inhala} profundamente por la nariz (Segundos 10 a 8).
+    \item \textbf{Sostén} el aire con calma (Segundos 7 a 5).
+    \item \textbf{Exhala} suavemente liberando tensión (Segundos 4 a 1).
+    \item Al terminar, puedes pulsar \textbf{Volver a mi enfoque} o \textbf{Usar app por 1 minuto} (emergencia).
+\end{enumerate}
+
+\subsection{Bloqueo Nocturno Agresivo}
+Durante el horario de descanso (\texttt{22:30 -- 06:30}):
+\begin{itemize}
+    \item Cada vez que enciendas la pantalla o desbloquees el teléfono, el bloqueo nocturno cubrirá toda la pantalla.
+    \item La pausa de emergencia está limitada a \textbf{exactamente 60 segundos} tras los 10 segundos de respiración.
+    \item Al vencer los 60 segundos o al apagar la pantalla, el sistema re-bloquea automáticamente el teléfono.
+    \item Las llamadas de emergencia (\texttt{InCallUI}) y alarmas (\texttt{DeskClock}) siempre están disponibles.
+\end{itemize}
+
+\section{Gestión de Aplicaciones Bloqueadas}
+En la pestaña \textbf{Apps}:
+\begin{itemize}
+    \item Usa el buscador para filtrar rápidamente entre todas tus aplicaciones instaladas.
+    \item Activa el switch para añadir cualquier app a la lista de bloqueo.
+    \item Pulsa \textbf{Bloquear Populares} para añadir de golpe Instagram, Reddit, TikTok, X, YouTube, Facebook y Twitch.
+\end{itemize}
+
+\section{Control por Terminal (CLI) e Integración Unix}
+Puedes controlar Enigma Focus mediante comandos de terminal vía ADB, Termux o Tasker:
+\begin{lstlisting}[language=bash]
+# Iniciar sesion de 45 minutos
+adb shell am broadcast -a com.example.enigmafocus.action.START_SESSION --ei duration_minutes 45
+
+# Detener sesion activa
+adb shell am broadcast -a com.example.enigmafocus.action.STOP_SESSION
+
+# Alternar escala de grises
+adb shell am broadcast -a com.example.enigmafocus.action.TOGGLE_GRAYSCALE
+
+# Consultar estado en JSON
+adb shell am broadcast -a com.example.enigmafocus.action.GET_STATUS
+
+# Aplicar plantilla predefinida (DEFAULT, WORKDAY_ONLY, BEDTIME_STRICT, DIGITAL_DETOX)
+adb shell am broadcast -a com.example.enigmafocus.action.APPLY_TEMPLATE --es template BEDTIME_STRICT
+\end{lstlisting}
+
+\section{Ajustes para Dispositivos Xiaomi / MIUI / HyperOS}
+Para evitar que el optimizador de batería de Xiaomi detenga los servicios en segundo plano:
+\begin{enumerate}[noitemsep]
+    \item \textbf{Inicio Automático}: \texttt{Ajustes $\rightarrow$ Aplicaciones $\rightarrow$ Enigma Focus $\rightarrow$ Inicio automático $\rightarrow$ Permitir}.
+    \item \textbf{Ahorro de Batería}: Seleccionar \texttt{Sin restricciones}.
+    \item \textbf{Ventanas Emergentes}: Habilitar \texttt{Mostrar ventanas emergentes en segundo plano}.
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,166 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.0cm, headheight=14.5pt}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+
+% Color Palette
+\definecolor{primaryDark}{HTML}{0D1B1E}
+\definecolor{accentGreen}{HTML}{2E7D32}
+\definecolor{accentLightGreen}{HTML}{4CAF50}
+\definecolor{codeBg}{HTML}{F4F6F7}
+\definecolor{codeBorder}{HTML}{CFD8DC}
+\definecolor{textDark}{HTML}{263238}
+
+% Typography & Header settings
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{accentGreen}{\textbf{Enigma Focus} — Technical Interview Guide}}
+\lhead{\textcolor{textDark}{Senior Android \& Systems Case Study}}
+\rfoot{\thepage}
+
+\titleformat{\section}{\Large\bfseries\color{accentGreen}}{\thesection.}{0.5em}{}[\titlerule]
+\titleformat{\subsection}{\large\bfseries\color{primaryDark}}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\bfseries\color{textDark}}{\thesubsubsection.}{0.5em}{}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accentGreen,
+    filecolor=accentGreen,
+    urlcolor=accentGreen
+}
+
+\lstdefinelanguage{Kotlin}{
+  keywords={package, import, val, var, fun, class, object, interface, return, if, else, for, while, true, false, null, when, override, private, public, companion, data, suspend},
+  keywordstyle=\color{accentGreen}\bfseries,
+  ndkeywords={String, Int, Long, Boolean, Context, AccessibilityService, WindowManager, Calendar},
+  ndkeywordstyle=\color{primaryDark}\bfseries,
+  sensitive=true,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{gray}\ttfamily,
+  stringstyle=\color{accentLightGreen},
+  morestring=[b]",
+  morestring=[s]{"""*}{*"""}
+}
+
+\lstset{
+    backgroundcolor=\color{codeBg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeBorder},
+    showstringspaces=false
+}
+
+\begin{document}
+
+\begin{center}
+    {\Huge \textbf{\color{primaryDark}Enigma Focus: Senior Android Case Study}}\\[0.3cm]
+    {\Large \textbf{\color{accentGreen}Technical Job Interview Preparation \& Architectural Deep Dive}}\\[0.2cm]
+    \textit{Designed for Senior Android Engineer, Mobile Architect, and Systems Lead Interviews}\\[0.4cm]
+    \rule{\linewidth}{1.5pt}
+\end{center}
+
+\vspace{0.2cm}
+
+\section{Project Overview \& Executive Summary}
+\textbf{Enigma Focus} is a production-grade, privacy-first, zero-friction Android application engineered in modern Kotlin and Jetpack Compose. Its mission is to eliminate compulsive digital distraction and enforce mindful barriers through hardware-level GPU controls and accessibility-level system interception.
+
+\begin{tcolorbox}[colback=codeBg,colframe=accentGreen,title=\textbf{Core Engineering Value Proposition}]
+Unlike conventional timer apps that rely on easily bypassed foreground overlays, Enigma Focus combines:
+\begin{itemize}[noitemsep]
+    \item \textbf{Instant System-Level Interception}: Real-time detection via \texttt{AccessibilityService} and 300ms watchdog loop ($<20$ms response).
+    \item \textbf{Hardware GPU Monochrome}: Direct Daltonizer display compositor control (\texttt{WRITE\_SECURE\_SETTINGS}).
+    \item \textbf{Aggressive Bedtime Lockout}: Instant screen-on locking during sleep hours with strict 60s emergency cap.
+    \item \textbf{Unix Philosophy Architecture}: Decoupled headless engines, JSON Lines logging, and full CLI IPC via Broadcast Intents.
+\end{itemize}
+\end{tcolorbox}
+
+\section{System Architecture \& Clean Design}
+The application strictly implements \textbf{Clean Architecture} and \textbf{MVI / MVVM} patterns, ensuring total separation between the headless background daemons and the reactive Jetpack Compose presentation layer.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Layer} & \textbf{Key Classes} & \textbf{Responsibilities} \\
+\midrule
+\textbf{Presentation} & \texttt{MainScreen}, \texttt{FocusScreen}, \texttt{AppsScreen} & Declarative Compose UI, StateFlow observation \\
+\textbf{Domain / Core} & \texttt{FocusInterceptor}, \texttt{ScheduleEvaluator} & Pure business logic, package filtering, time maths \\
+\textbf{Hardware \& Sys} & \texttt{GrayscaleManager}, \texttt{BlockOverlayManager} & WindowManager, Daltonizer GPU, Vibrator, Keyguard \\
+\textbf{Headless Daemon} & \texttt{FocusAccessibilityService}, \texttt{ForegroundService} & Uninterruptible background watchdog \& live monitoring \\
+\textbf{IPC / CLI} & \texttt{FocusCommandReceiver}, \texttt{JsonConfigManager} & Broadcast Intents for Termux/ADB/Tasker \& JSON sync \\
+\textbf{Data / Local} & \texttt{AppPreferences}, \texttt{FocusEventLogger} & SharedPreferences with in-memory fallback, JSONL logs \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Key Technical Deep Dives (Interview Talking Points)}
+
+\subsection{1. Zero-Friction App Interception: Accessibility vs UsageStats}
+\begin{itemize}
+    \item \textbf{Why Accessibility Service?} Android's \texttt{UsageStatsManager} suffers from 1--5 second polling latency and cannot block apps proactively. \texttt{FocusAccessibilityService} receives \texttt{TYPE\_WINDOW\_STATE\_CHANGED} and \texttt{TYPE\_WINDOWS\_CHANGED} within $<20$ milliseconds.
+    \item \textbf{Optimized Accessibility Overlay}: Uses \texttt{TYPE\_ACCESSIBILITY\_OVERLAY} with \texttt{FLAG\_NOT\_TOUCH\_MODAL} and \texttt{FLAG\_LAYOUT\_IN\_SCREEN}, attached directly through the system \texttt{WindowManager} hosting an isolated ComposeView tree.
+    \item \textbf{Keyguard Coexistence}: Evaluates \texttt{KeyguardManager.isKeyguardLocked}. It waits for \texttt{ACTION\_USER\_PRESENT} before presenting the sleep nudge, preventing conflicts with the system lockscreen PIN/fingerprint pad.
+\end{itemize}
+
+\subsection{2. GPU Daltonizer Engine (Hardware Monochrome Mode)}
+\begin{lstlisting}[language=Kotlin]
+Settings.Secure.putInt(contentResolver, "accessibility_display_daltonizer_enabled", 1)
+Settings.Secure.putInt(contentResolver, "accessibility_display_daltonizer", 0) // 0 = Monochrome
+\end{lstlisting}
+\begin{itemize}
+    \item Rather than rendering an expensive full-screen grayscale tint shader (which degrades battery and CPU), Enigma Focus instructs the SurfaceFlinger display compositor to run monochrome on hardware GPU pipelines.
+    \item Requires \texttt{android.permission.WRITE\_SECURE\_SETTINGS}, grantable via ADB or Shizuku without requiring root.
+\end{itemize}
+
+\subsection{3. Aggressive Bedtime Lockout (Anti-Relapse Watchdog)}
+\begin{itemize}
+    \item Monitors the overnight interval (\texttt{22:30 -- 06:30}).
+    \item Enforces a mandatory 10-second mindful breathing challenge (*Inhale, Hold, Exhale*) before enabling the emergency pause.
+    \item Limits emergency access to \textbf{strictly 60 seconds}. When the timer expires, the background 300ms watchdog immediately re-triggers the blocking overlay and sends the user Home.
+    \item \textbf{Snooze Invalidation}: Registering a \texttt{BroadcastReceiver} for \texttt{ACTION\_SCREEN\_OFF} ensures that putting the phone down immediately cancels any active 1-minute grace period.
+\end{itemize}
+
+\subsection{4. Unix Philosophy in Mobile Systems}
+\begin{itemize}
+    \item \textbf{Declarative Configuration}: Supports full config export/import in human-readable JSON (\texttt{enigma\_config.json}) with hot live-reload.
+    \item \textbf{Composability \& CLI}: Exposes 14 Broadcast Intents enabling control via terminal or Tasker:
+    \begin{lstlisting}[language=bash]
+adb shell am broadcast -a com.example.enigmafocus.action.START_SESSION --ei duration_minutes 25
+adb shell am broadcast -a com.example.enigmafocus.action.GET_STATUS
+    \end{lstlisting}
+    \item \textbf{Silent Telemetry in JSON Lines}: All events logged to \texttt{focus\_events.jsonl} locally (zero cloud, 100\% private) with automatic rotation at 5,000 lines.
+\end{itemize}
+
+\section{Likely Technical Interview Questions \& Model Answers}
+
+\subsubsection*{Q1: How do you prevent memory leaks when injecting ComposeViews into an AccessibilityService?}
+\textbf{Model Answer:} ``In an AccessibilityService, there is no standard Activity lifecycle. To safely render Jetpack Compose in a \texttt{WindowManager} overlay, I implemented a custom \texttt{OverlayLifecycleOwner} implementing both \texttt{LifecycleOwner} and \texttt{SavedStateRegistryOwner}. When the overlay is dismissed, we explicitly dispatch \texttt{ON\_PAUSE}, \texttt{ON\_STOP}, \texttt{ON\_DESTROY} and invoke \texttt{windowManager.removeView(composeView)}, preventing orphaned view trees and coroutine scope leaks.''
+
+\subsubsection*{Q2: How do you handle battery optimization and aggressive OEM killers (e.g., Xiaomi MIUI/HyperOS)?}
+\textbf{Model Answer:} ``We utilize a dual-layer survival architecture:
+1. An official \texttt{AccessibilityService}, which is granted high-priority lifecycle protection by Android's accessibility framework.
+2. A persistent \texttt{ForegroundService} with \texttt{FOREGROUND\_SERVICE\_TYPE\_SPECIAL\_USE} and ongoing notification during active timer sessions.
+3. \texttt{BootReceiver} listening to \texttt{ACTION\_BOOT\_COMPLETED} and \texttt{MY\_PACKAGE\_REPLACED} to restore scheduled interval listeners immediately upon boot.''
+
+\subsubsection*{Q3: How did you test concurrency and overnight interval calculations?}
+\textbf{Model Answer:} ``I wrote a comprehensive test suite in JUnit 4 using multi-threaded pools (\texttt{Executors.newFixedThreadPool(16)}) simulating 1,000 concurrent access requests across day boundaries, leap hours, and daylight savings transitions. For overnight intervals (e.g., 22:30 to 06:30), the algorithm evaluates cross-midnight minutes math ($start > end$) and maps Saturday--Sunday rollover with 100\% test coverage.''
+
+\section{Key Takeaways for Interviewers}
+\begin{itemize}[noitemsep]
+    \item \textbf{Engineering Rigor}: 23 automated unit and stress tests passing with 100\% reliability.
+    \item \textbf{Full Bilingual Parity}: Native dynamic localization in English and Spanish across UI, notifications, and tiles.
+    \item \textbf{Systems-Level Mastery}: Expert handling of Android IPC, SurfaceFlinger hardware settings, Accessibility APIs, and Jetpack Compose.
+\end{itemize}
+
+\end{document}

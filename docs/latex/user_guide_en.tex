@@ -1,0 +1,164 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.0cm, headheight=14.5pt}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+% Color Palette
+\definecolor{primaryDark}{HTML}{0F1412}
+\definecolor{accentGreen}{HTML}{2E7D32}
+\definecolor{accentLightGreen}{HTML}{4CAF50}
+\definecolor{codeBg}{HTML}{F5F7F8}
+\definecolor{codeBorder}{HTML}{CFD8DC}
+\definecolor{textDark}{HTML}{212121}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{accentGreen}{\textbf{Enigma Focus} — User Manual}}
+\lhead{\textcolor{textDark}{Official Operations \& Reference Guide}}
+\rfoot{\thepage}
+
+\titleformat{\section}{\Large\bfseries\color{accentGreen}}{\thesection.}{0.5em}{}[\titlerule]
+\titleformat{\subsection}{\large\bfseries\color{primaryDark}}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\bfseries\color{textDark}}{\thesubsubsection.}{0.5em}{}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accentGreen,
+    filecolor=accentGreen,
+    urlcolor=accentGreen
+}
+
+\lstset{
+    backgroundcolor=\color{codeBg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeBorder},
+    keywordstyle=\color{accentGreen}\bfseries,
+    commentstyle=\color{gray},
+    stringstyle=\color{primaryDark},
+    showstringspaces=false
+}
+
+\begin{document}
+
+\begin{center}
+    {\Huge \textbf{\color{primaryDark}Enigma Focus}}\\[0.3cm]
+    {\Large \textbf{\color{accentGreen}Complete User Manual \& Technical Reference Guide}}\\[0.2cm]
+    \textit{Mindful App Blocking, Hardware Grayscale, and Digital Detox Platform}\\[0.4cm]
+    \rule{\linewidth}{1.5pt}
+\end{center}
+
+\vspace{0.3cm}
+
+\section{Introduction}
+\textbf{Enigma Focus} is a production-grade digital wellbeing and productivity app for Android engineered around the Unix philosophy: \textit{do one thing and do it exceptionally well}. It empowers you to reclaim your time and focus by eliminating compulsive dopaminergic phone habits through hardware-level GPU monochrome mode, mindful breathing friction, and aggressive sleep schedule lockouts.
+
+\begin{tcolorbox}[colback=codeBg,colframe=accentGreen,title=\textbf{Key Feature Highlights}]
+\begin{itemize}[noitemsep]
+    \item \textbf{Sub-20ms Accessibility Interception}: Real-time app and website blocking with zero battery drain.
+    \item \textbf{10-Second Mindful Breathing Challenge}: Inhale, Hold, and Exhale guide before unlocking.
+    \item \textbf{Hardware GPU Monochrome}: Direct Daltonizer display compositor control (\texttt{WRITE\_SECURE\_SETTINGS}).
+    \item \textbf{Aggressive Bedtime Lockout (10:30 PM -- 6:30 AM)}: Strict 1-minute emergency cap during sleep hours.
+    \item \textbf{Unix Philosophy \& CLI Automation}: 14 Broadcast Intents for ADB, Termux, and Tasker integration.
+\end{itemize}
+\end{tcolorbox}
+
+\section{Initial Setup \& Required Permissions}
+
+To deliver unbreakable focus protection, Enigma Focus utilizes two core Android system permissions:
+
+\subsection{1. Accessibility Service}
+Allows the engine to instantly detect when a restricted app or distracting web domain is opened:
+\begin{enumerate}[noitemsep]
+    \item Go to \textbf{Settings} $\rightarrow$ \textbf{Accessibility} $\rightarrow$ \textbf{Downloaded Apps / Installed Services}.
+    \item Tap \textbf{Enigma Focus} and enable the toggle.
+\end{enumerate}
+
+\subsection{2. Hardware Grayscale Permission (WRITE\_SECURE\_SETTINGS)}
+Enables the app to command the GPU display compositor to enter monochrome mode. Connect your phone to a computer with USB Debugging enabled and run:
+\begin{lstlisting}[language=bash]
+adb shell pm grant com.example.enigmafocus android.permission.WRITE_SECURE_SETTINGS
+\end{lstlisting}
+
+\section{Core Features \& Daily Operations}
+
+\subsection{Manual Focus Timer Sessions}
+On the main \textbf{Focus} tab:
+\begin{itemize}
+    \item Select your desired focus session chip: \textbf{25 min} (Pomodoro), \textbf{1 hour}, \textbf{4 hours}, or \textbf{9h Workday}.
+    \item Tap \textbf{Start Session}. Hardware grayscale turns on (if enabled), an ongoing status bar countdown appears, and all target apps are blocked.
+    \item To conclude early, tap \textbf{Stop Session}.
+\end{itemize}
+
+\subsection{Scheduled Recurring Focus Intervals}
+Enigma Focus includes two preconfigured default intervals:
+\begin{enumerate}
+    \item \textbf{Workday Shift}: \texttt{07:30 - 16:30} (Monday to Friday).
+    \item \textbf{Rest / Sleep}: \texttt{22:30 - 06:30} (Every day).
+\end{enumerate}
+Tap the \textbf{Edit} button on any interval to adjust start/end times and active days, or tap \textbf{+ Add Schedule / Interval} to create custom routines (e.g. Evening Study from 18:00 to 20:30).
+
+\subsection{Mindful Breathing Challenge}
+When you launch a blocked app (e.g. Instagram, TikTok, or Reddit), an immersive dark screen immediately covers the display:
+\begin{enumerate}
+    \item \textbf{Inhale} deeply through your nose (Seconds 10 to 8).
+    \item \textbf{Hold} your breath calmly (Seconds 7 to 5).
+    \item \textbf{Exhale} slowly and release tension (Seconds 4 to 1).
+    \item Once completed, choose \textbf{"Return to Focus"} to go Home or \textbf{"Use app for 1 minute"} for emergency access.
+\end{enumerate}
+
+\subsection{Aggressive Bedtime Lockout}
+During your sleep window (\texttt{22:30 -- 06:30}):
+\begin{itemize}
+    \item Every screen turn-on or phone unlock is immediately intercepted by the bedtime lock overlay.
+    \item Emergency access is capped at \textbf{strictly 60 seconds} after passing the 10s breathing challenge.
+    \item When 60s expire or the screen is turned off, the background watchdog immediately re-locks the device.
+    \item Emergency phone calls (\texttt{InCallUI}) and alarm clocks (\texttt{DeskClock}) remain permanently accessible.
+\end{itemize}
+
+\section{Managing Blocked Applications}
+On the \textbf{Apps} tab:
+\begin{itemize}
+    \item Use the real-time search bar to find any application installed on your device.
+    \item Toggle individual switches to add or remove apps from your blocklist.
+    \item Tap \textbf{Block Popular} to instantly restrict major social media and distraction platforms in 1 tap.
+\end{itemize}
+
+\section{Unix CLI Broadcasts \& Script Automation}
+Control Enigma Focus directly from terminal, Termux, or Tasker via standard Android broadcast intents:
+\begin{lstlisting}[language=bash]
+# Start a 45-minute focus session
+adb shell am broadcast -a com.example.enigmafocus.action.START_SESSION --ei duration_minutes 45
+
+# Stop active session
+adb shell am broadcast -a com.example.enigmafocus.action.STOP_SESSION
+
+# Toggle hardware grayscale
+adb shell am broadcast -a com.example.enigmafocus.action.TOGGLE_GRAYSCALE
+
+# Query status JSON
+adb shell am broadcast -a com.example.enigmafocus.action.GET_STATUS
+
+# Apply template (DEFAULT, WORKDAY_ONLY, BEDTIME_STRICT, DIGITAL_DETOX)
+adb shell am broadcast -a com.example.enigmafocus.action.APPLY_TEMPLATE --es template BEDTIME_STRICT
+\end{lstlisting}
+
+\section{Xiaomi / MIUI / HyperOS Optimization Guide}
+To prevent aggressive OEM battery managers from stopping background protection:
+\begin{enumerate}[noitemsep]
+    \item \textbf{Autostart}: \texttt{Settings $\rightarrow$ Apps $\rightarrow$ Enigma Focus $\rightarrow$ Autostart $\rightarrow$ Allow}.
+    \item \textbf{Battery Saver}: Select \texttt{No restrictions}.
+    \item \textbf{Display Pop-up Windows}: Set to \texttt{Always Allow}.
+\end{enumerate}
+
+\end{document}
