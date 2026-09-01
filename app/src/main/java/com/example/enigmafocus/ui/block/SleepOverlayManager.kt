@@ -386,7 +386,7 @@ fun SleepNudgeScreen(
                     onClick = onGoToSleep,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
+                        .height(48.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3F51B5))
                 ) {
@@ -404,44 +404,65 @@ fun SleepNudgeScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Secondary Action: 15 min snooze (enabled after 10s breathing)
-                OutlinedButton(
-                    onClick = { onEmergencySnooze(15) },
+                // Key Action: Use phone for 1 minute (enabled after 10s breathing)
+                Button(
+                    onClick = { onEmergencySnooze(1) },
                     enabled = secondsLeft == 0,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(46.dp),
-                    shape = RoundedCornerShape(14.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF9100),
+                        disabledContainerColor = Color(0xFF22283A),
+                        contentColor = Color.Black,
+                        disabledContentColor = Color(0xFF7E8B9B)
+                    )
                 ) {
                     Text(
                         text = if (secondsLeft > 0) {
-                            String.format(AppStrings.get("btn_sleep_snooze_wait", isEng), secondsLeft)
+                            String.format(AppStrings.get("btn_use_phone_1_min_wait", isEng), secondsLeft)
                         } else {
-                            AppStrings.get("btn_sleep_snooze_15m", isEng)
+                            "⚡ " + AppStrings.get("btn_use_phone_1_min", isEng)
                         },
-                        color = if (secondsLeft == 0) Color(0xFFFFB74D) else Color(0xFF666666),
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Tertiary Action: Unlock for tonight
+                // Additional Emergency Options (15 min or Tonight)
                 if (secondsLeft == 0) {
-                    androidx.compose.material3.TextButton(
-                        onClick = onDismissTonight,
-                        modifier = Modifier.fillMaxWidth().height(40.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = AppStrings.get("btn_sleep_dismiss_tonight", isEng),
-                            color = Color(0xFF90CAF9),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        androidx.compose.material3.TextButton(
+                            onClick = { onEmergencySnooze(15) }
+                        ) {
+                            Text(
+                                text = "⏱️ " + AppStrings.get("btn_sleep_snooze_15m", isEng),
+                                color = Color(0xFFFFCC80),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        androidx.compose.material3.TextButton(
+                            onClick = onDismissTonight
+                        ) {
+                            Text(
+                                text = "🌙 " + AppStrings.get("btn_sleep_dismiss_tonight", isEng),
+                                color = Color(0xFF90CAF9),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 } else {
-                    Spacer(modifier = Modifier.height(40.dp))
+                    Spacer(modifier = Modifier.height(36.dp))
                 }
             }
         }
