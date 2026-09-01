@@ -57,10 +57,11 @@ class FocusForegroundService : Service() {
     }
 
     private fun startForegroundWithNotification(endTimestamp: Long, durationMinutes: Int) {
+        val isEng = AppPreferences.isEnglish()
         val initialText = if (endTimestamp > 0) {
-            "Modo Enfoque activo: $durationMinutes min"
+            if (isEng) "Focus Mode active: $durationMinutes min" else "Modo Enfoque activo: $durationMinutes min"
         } else {
-            "Modo Enfoque continuo activo"
+            if (isEng) "Continuous Focus Mode active" else "Modo Enfoque continuo activo"
         }
 
         val notification = buildNotification(initialText)
@@ -77,6 +78,7 @@ class FocusForegroundService : Service() {
     }
 
     private fun buildNotification(contentText: String): Notification {
+        val isEng = AppPreferences.isEnglish()
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -95,12 +97,12 @@ class FocusForegroundService : Service() {
 
         return NotificationCompat.Builder(this, FocusApp.FOCUS_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("🛡️ Sesión de Concentración")
+            .setContentTitle(if (isEng) "🛡️ Focus Session" else "🛡️ Sesión de Concentración")
             .setContentText(contentText)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(pendingOpenApp)
-            .addAction(0, "Detener", pendingStop)
+            .addAction(0, if (isEng) "Stop" else "Detener", pendingStop)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
@@ -117,13 +119,15 @@ class FocusForegroundService : Service() {
                         break
                     }
 
+                    val isEng = AppPreferences.isEnglish()
                     val hours = TimeUnit.MILLISECONDS.toHours(remainingMillis)
                     val minutes = TimeUnit.MILLISECONDS.toMinutes(remainingMillis) % 60
                     val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingMillis) % 60
+                    val prefix = if (isEng) "Time remaining" else "Tiempo restante"
                     val formatted = if (hours > 0) {
-                        String.format(Locale.getDefault(), "Tiempo restante: %02d:%02d:%02d", hours, minutes, seconds)
+                        String.format(Locale.getDefault(), "$prefix: %02d:%02d:%02d", hours, minutes, seconds)
                     } else {
-                        String.format(Locale.getDefault(), "Tiempo restante: %02d:%02d", minutes, seconds)
+                        String.format(Locale.getDefault(), "$prefix: %02d:%02d", minutes, seconds)
                     }
 
                     val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager

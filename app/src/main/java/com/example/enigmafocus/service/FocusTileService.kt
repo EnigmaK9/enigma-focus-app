@@ -24,8 +24,13 @@ class FocusTileService : TileService() {
     private fun updateTileState() {
         val tile = qsTile ?: return
         val isActive = AppPreferences.isFocusActive()
+        val isEng = AppPreferences.isEnglish()
         tile.state = if (isActive) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-        tile.subtitle = if (isActive) "Enfoque Activo" else "Iniciar 25 min"
+        tile.subtitle = if (isActive) {
+            if (isEng) "Focus Active" else "Enfoque Activo"
+        } else {
+            if (isEng) "Start 25 min" else "Iniciar 25 min"
+        }
         tile.updateTile()
     }
 }

@@ -71,7 +71,17 @@ class FocusAccessibilityService : AccessibilityService() {
                     // Reset 1-minute snooze when screen is turned off so next unlock locks immediately
                     SleepOverlayManager.resetDismissedTime()
                 }
-                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
+                Intent.ACTION_SCREEN_ON -> {
+                    val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
+                    // If device is not locked with PIN/Pattern, show sleep nudge immediately
+                    if (keyguardManager?.isKeyguardLocked == false) {
+                        if (isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
+                            SleepOverlayManager.showSleepNudge(this@FocusAccessibilityService)
+                        }
+                    }
+                }
+                Intent.ACTION_USER_PRESENT -> {
+                    // Device was just unlocked with PIN/Fingerprint/Pattern
                     if (isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
                         SleepOverlayManager.showSleepNudge(this@FocusAccessibilityService)
                     }
@@ -212,8 +222,8 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun findUrlInNode(node: AccessibilityNodeInfo?): String? {
-        if (node == null) return null
+    private fun findUrlInNode(node: AccessibilityNodeInfo?, depth: Int = 0): String? {
+        if (node == null || depth > 6) return null
         val text = node.text?.toString()
         if (text != null && (text.contains(".") || text.startsWith("http"))) {
             for (domain in blockedWebDomains) {
@@ -224,7 +234,7 @@ class FocusAccessibilityService : AccessibilityService() {
         }
         for (i in 0 until node.childCount) {
             val child = node.getChild(i)
-            val found = findUrlInNode(child)
+            val found = findUrlInNode(child, depth + 1)
             if (found != null) return found
         }
         return null
@@ -232,13 +242,14 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private fun isSleepInterval(interval: FocusInterval): Boolean {
         val label = interval.label.lowercase()
+        val isOvernightHours = interval.startHour > interval.endHour && (interval.startHour >= 20 || interval.endHour <= 9)
         return label.contains("dormir") ||
                label.contains("descanso") ||
                label.contains("sueño") ||
                label.contains("noche") ||
                label.contains("sleep") ||
                label.contains("rest") ||
-               (interval.startHour >= 21 || interval.endHour <= 8)
+               isOvernightHours
     }
 
     private fun isSleepScheduleActive(): Boolean {

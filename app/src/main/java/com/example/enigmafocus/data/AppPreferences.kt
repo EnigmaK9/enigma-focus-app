@@ -335,8 +335,9 @@ object AppPreferences {
     }
 
     private fun serializeInterval(interval: FocusInterval): String {
+        val cleanLabel = interval.label.replace(";;;", " ")
         val daysString = interval.daysOfWeek.joinToString(",")
-        return "${interval.id};;;${interval.label};;;${interval.startHour};;;${interval.startMinute};;;${interval.endHour};;;${interval.endMinute};;;${daysString};;;${interval.isEnabled}"
+        return "${interval.id};;;${cleanLabel};;;${interval.startHour};;;${interval.startMinute};;;${interval.endHour};;;${interval.endMinute};;;${daysString};;;${interval.isEnabled}"
     }
 
     private fun deserializeInterval(raw: String): FocusInterval? {
