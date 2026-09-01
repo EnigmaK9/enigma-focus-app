@@ -17,6 +17,7 @@
 \usepackage{tocloft}
 \usepackage{array}
 \usepackage{longtable}
+\usepackage{tabularx}
 
 % Paleta de Colores
 \definecolor{primaryDark}{HTML}{0A192F}
@@ -180,9 +181,9 @@ La Tabla~\ref{tab:market_comparison} ilustra la comparativa técnica entre Enigm
 \begin{table}[h!]
 \centering
 \small
-\begin{tabular}{lcccc}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.5cm} >{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\centering\arraybackslash}X}
 \toprule
-\textbf{Característica} & \textbf{Enigma Focus} & \textbf{OneSec} & \textbf{Opal / Freedom} & \textbf{Bienestar Digital Android} \\
+\textbf{Característica} & \textbf{Enigma Focus} & \textbf{OneSec} & \textbf{Opal / Freedom} & \textbf{Bienestar Digital} \\
 \midrule
 Latencia de Intercepción & \textbf{$<20$ ms} & $\sim 200$ ms & $\sim 1000$ ms (VPN) & Pasiva (No bloquea) \\
 Escala de Grises por Hardware & \textbf{Sí (GPU)} & No & No & Parcial (Solo manual) \\
@@ -192,7 +193,7 @@ Control por Terminal (CLI / ADB) & \textbf{14 Intents} & No & No & No \\
 Consumo de Batería & \textbf{$< 0.5\%$ al día} & Moderado & Alto (Túnel VPN) & Bajo \\
 Código Abierto / Auditabilidad & \textbf{100\% Open Source} & Código Cerrado & Código Cerrado & Propietario \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \caption{Comparativa técnica de Enigma Focus frente a soluciones líderes.}
 \label{tab:market_comparison}
 \end{table}
@@ -483,26 +484,26 @@ Enigma Focus implementa un receptor de difusión (\texttt{FocusCommandReceiver})
 \begin{table}[h!]
 \centering
 \small
-\begin{tabular}{lll}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash\ttfamily\footnotesize}p{5.2cm} >{\raggedright\arraybackslash\ttfamily\footnotesize}p{4.2cm} >{\raggedright\arraybackslash}X}
 \toprule
-\textbf{Acción del Intent} & \textbf{Parámetros Extra} & \textbf{Efecto en el Sistema} \\
+\textbf{\textrm{\textbf{Acción del Intent}}} & \textbf{\textrm{\textbf{Parámetros Extra}}} & \textbf{\textrm{\textbf{Efecto en el Sistema}}} \\
 \midrule
-\texttt{.action.START\_SESSION} & \texttt{--ei duration\_minutes 45} & Inicia sesión con cuenta regresiva y grises \\
-\texttt{.action.STOP\_SESSION} & Ninguno & Detiene la sesión activa y restaura color \\
-\texttt{.action.TOGGLE\_GRAYSCALE} & Ninguno & Alterna el modo monocromático en la GPU \\
-\texttt{.action.SET\_GRAYSCALE} & \texttt{--ez enabled true} & Activa o desactiva la escala de grises \\
-\texttt{.action.SET\_ALWAYS\_BLOCK} & \texttt{--ez enabled true} & Bloquea siempre las apps seleccionadas \\
-\texttt{.action.SET\_STRICT\_MODE} & \texttt{--ez enabled true} & Bloquea sin permitir pausas de emergencia \\
-\texttt{.action.BLOCK\_PACKAGE} & \texttt{--es package <pkg>} & Añade una aplicación a la lista negra \\
-\texttt{.action.UNBLOCK\_PACKAGE} & \texttt{--es package <pkg>} & Elimina una app de la lista de bloqueo \\
-\texttt{.action.SET\_LANGUAGE} & \texttt{--es lang <en|es|system>} & Cambia el idioma en tiempo de ejecución \\
-\texttt{.action.APPLY\_TEMPLATE} & \texttt{--es template <NOMBRE>} & Aplica plantilla de horarios predefinida \\
-\texttt{.action.RELOAD\_CONFIG} & Ninguno & Recarga en caliente la configuración desde disco \\
-\texttt{.action.EXPORT\_CONFIG} & Ninguno & Exporta el JSON completo a la salida estándar \\
-\texttt{.action.GET\_STATUS} & Ninguno & Devuelve el estado del motor en JSON \\
-\texttt{.action.CLEAR\_LOGS} & Ninguno & Limpia el archivo de registros JSON Lines \\
+.action.START\_SESSION & --ei duration\_minutes 45 & Inicia sesión con cuenta regresiva y grises \\
+.action.STOP\_SESSION & Ninguno & Detiene la sesión activa y restaura color \\
+.action.TOGGLE\_GRAYSCALE & Ninguno & Alterna el modo monocromático en la GPU \\
+.action.SET\_GRAYSCALE & --ez enabled true & Activa o desactiva la escala de grises \\
+.action.SET\_ALWAYS\_BLOCK & --ez enabled true & Bloquea siempre las apps seleccionadas \\
+.action.SET\_STRICT\_MODE & --ez enabled true & Bloquea sin permitir pausas de emergencia \\
+.action.BLOCK\_PACKAGE & --es package <pkg> & Añade una aplicación a la lista negra \\
+.action.UNBLOCK\_PACKAGE & --es package <pkg> & Elimina una app de la lista de bloqueo \\
+.action.SET\_LANGUAGE & --es lang <en|es|system> & Cambia el idioma en tiempo de ejecución \\
+.action.APPLY\_TEMPLATE & --es template <NOMBRE> & Aplica plantilla de horarios predefinida \\
+.action.RELOAD\_CONFIG & Ninguno & Recarga en caliente la configuración desde disco \\
+.action.EXPORT\_CONFIG & Ninguno & Exporta el JSON completo a la salida estándar \\
+.action.GET\_STATUS & Ninguno & Devuelve el estado del motor en JSON \\
+.action.CLEAR\_LOGS & Ninguno & Limpia el archivo de registros JSON Lines \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \caption{Matriz de comandos CLI IPC mediante Broadcast Intents.}
 \label{tab:cli_commands}
 \end{table}
@@ -586,17 +587,17 @@ El proyecto cuenta con una batería de **23 pruebas unitarias y de estrés autom
 \begin{table}[h!]
 \centering
 \small
-\begin{tabular}{lll}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash\ttfamily}p{5.8cm} >{\raggedright\arraybackslash}X >{\centering\arraybackslash}p{2.6cm}}
 \toprule
-\textbf{Clase de Test} & \textbf{Objetivo Evaluado} & \textbf{Resultado} \\
+\textbf{\textrm{\textbf{Clase de Test}}} & \textbf{\textrm{\textbf{Objetivo Evaluado}}} & \textbf{\textrm{\textbf{Resultado}}} \\
 \midrule
-\texttt{ComprehensiveFocusUnitTests} & Intervalos de tiempo, cruces de medianoche, formateo bilingüe & \textbf{100\% Pass} \\
-\texttt{UnixArchitectureAndStressTests} & Rejilla temporal de 24h (96 puntos), concurrencia en 16 hilos & \textbf{100\% Pass} \\
-\texttt{GrayscaleManagerTest} & Permisos de ajustes seguros y comandos ADB & \textbf{100\% Pass} \\
-\texttt{AppInfoTest} & Mapeo de entidades, filtrado de populares y flags de bloqueo & \textbf{100\% Pass} \\
-\texttt{MainScreenViewModelTest} & Emisión de estados MVI, búsquedas reactivas y mutaciones & \textbf{100\% Pass} \\
+ComprehensiveFocusUnitTests & Intervalos de tiempo, cruces de medianoche, formateo bilingüe & \textbf{100\% Pass} \\
+UnixArchitectureAndStressTests & Rejilla temporal de 24h (96 puntos), concurrencia en 16 hilos & \textbf{100\% Pass} \\
+GrayscaleManagerTest & Permisos de ajustes seguros y comandos ADB & \textbf{100\% Pass} \\
+AppInfoTest & Mapeo de entidades, filtrado de populares y flags de bloqueo & \textbf{100\% Pass} \\
+MainScreenViewModelTest & Emisión de estados MVI, búsquedas reactivas y mutaciones & \textbf{100\% Pass} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \caption{Resumen de la suite de pruebas unitarias automatizadas.}
 \label{tab:test_suite}
 \end{table}
