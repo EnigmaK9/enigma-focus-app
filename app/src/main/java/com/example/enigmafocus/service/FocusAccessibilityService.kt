@@ -20,6 +20,7 @@ import com.example.enigmafocus.core.interceptor.FocusInterceptor
 import com.example.enigmafocus.core.scheduler.ScheduleEvaluator
 import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.data.FocusEventLogger
+import com.example.enigmafocus.ui.block.BlockActivity
 import com.example.enigmafocus.ui.block.BlockOverlayManager
 import com.example.enigmafocus.ui.block.SleepOverlayManager
 import kotlinx.coroutines.CoroutineScope
@@ -126,6 +127,7 @@ class FocusAccessibilityService : AccessibilityService() {
     private fun startWatchdog() {
         watchdogJob?.cancel()
         watchdogJob = serviceScope.launch {
+            var blockedPackageCounter = 0
             while (isActive) {
                 try {
                     val root = rootInActiveWindow
@@ -137,6 +139,22 @@ class FocusAccessibilityService : AccessibilityService() {
                         checkAndBlockPackage(pkg)
                         if (root != null) {
                             checkBrowserUrls(root, pkg)
+                        }
+
+                        // Failsafe 3: If a blocked package persists in the active window
+                        // without either the overlay showing or BlockActivity active, kick to HOME screen
+                        if (FocusInterceptor.shouldBlockPackage(packageName, pkg) &&
+                            !BlockOverlayManager.isShowing() &&
+                            !BlockActivity.isBlockScreenShowing
+                        ) {
+                            blockedPackageCounter++
+                            if (blockedPackageCounter >= 3) { // ~900ms of bypassed blocked app
+                                Log.w(TAG, "🚨 Failsafe triggered: Blocked app $pkg detected without block screen. Sending to HOME!")
+                                performGlobalAction(GLOBAL_ACTION_HOME)
+                                blockedPackageCounter = 0
+                            }
+                        } else {
+                            blockedPackageCounter = 0
                         }
                     }
                 } catch (e: Exception) {
@@ -216,7 +234,14 @@ class FocusAccessibilityService : AccessibilityService() {
         }
 
         if (!FocusInterceptor.shouldBlockPackage(this.packageName, packageName)) {
-            if (BlockOverlayManager.isShowing() && BlockOverlayManager.getCurrentPackage() != packageName) {
+            // Only dismiss overlay if the user actually navigated to an unblocked user app
+            // (Exclude our own app, system UI, Android system, and keyboard input method)
+            if (BlockOverlayManager.isShowing() &&
+                packageName != this.packageName &&
+                packageName != "android" &&
+                !packageName.contains("systemui") &&
+                !packageName.contains("inputmethod")
+            ) {
                 BlockOverlayManager.hideOverlay(this)
             }
             return
@@ -237,6 +262,20 @@ class FocusAccessibilityService : AccessibilityService() {
         vibratePhone()
         FocusEventLogger.logEvent(this, "app_blocked", mapOf("package" to packageName))
 
+        // Failsafe 1: Launch full-screen BlockActivity immediately to guarantee occlusion
+        try {
+            val blockIntent = Intent(this, BlockActivity::class.java).apply {
+                putExtra(BlockActivity.EXTRA_BLOCKED_PACKAGE, packageName)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            startActivity(blockIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting BlockActivity failsafe", e)
+        }
+
+        // Failsafe 2: Also attach TYPE_ACCESSIBILITY_OVERLAY for instant reactive barrier
         BlockOverlayManager.showOverlay(this, packageName) {
             clearDebounce()
         }
