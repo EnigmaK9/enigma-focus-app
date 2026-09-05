@@ -8,12 +8,17 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.enigmafocus.FocusApp
 import com.example.enigmafocus.MainActivity
 import com.example.enigmafocus.R
+import com.example.enigmafocus.core.interceptor.FocusInterceptor
+import com.example.enigmafocus.core.scheduler.ScheduleEvaluator
 import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.manager.GrayscaleManager
+import com.example.enigmafocus.manager.UsageStatsHelper
+import com.example.enigmafocus.ui.block.BlockActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,6 +31,7 @@ import java.util.concurrent.TimeUnit
 class FocusForegroundService : Service() {
 
     companion object {
+        private const val TAG = "FocusForegroundService"
         const val ACTION_START = "ACTION_START_FOCUS"
         const val ACTION_STOP = "ACTION_STOP_FOCUS"
         const val EXTRA_DURATION_MINUTES = "extra_duration_minutes"
@@ -35,6 +41,7 @@ class FocusForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     private var timerJob: Job? = null
+    private var lastRestartAttemptTime = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -110,30 +117,88 @@ class FocusForegroundService : Service() {
     private fun startTimer(endTimestamp: Long) {
         timerJob?.cancel()
         timerJob = serviceScope.launch {
+            var cycleCount = 0
             while (isActive) {
-                if (endTimestamp > 0) {
-                    val remainingMillis = endTimestamp - System.currentTimeMillis()
-                    if (remainingMillis <= 0) {
-                        // Completed!
-                        onSessionCompleted()
-                        break
+                cycleCount++
+                try {
+                    // 1. Session Duration & Notification update
+                    if (endTimestamp > 0) {
+                        val remainingMillis = endTimestamp - System.currentTimeMillis()
+                        if (remainingMillis <= 0) {
+                            // Completed!
+                            onSessionCompleted()
+                            break
+                        }
+
+                        val isEng = AppPreferences.isEnglish()
+                        val hours = TimeUnit.MILLISECONDS.toHours(remainingMillis)
+                        val minutes = TimeUnit.MILLISECONDS.toMinutes(remainingMillis) % 60
+                        val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingMillis) % 60
+                        val prefix = if (isEng) "Time remaining" else "Tiempo restante"
+                        val formatted = if (hours > 0) {
+                            String.format(Locale.getDefault(), "$prefix: %02d:%02d:%02d", hours, minutes, seconds)
+                        } else {
+                            String.format(Locale.getDefault(), "$prefix: %02d:%02d", minutes, seconds)
+                        }
+
+                        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                        notificationManager.notify(NOTIFICATION_ID, buildNotification(formatted))
                     }
 
-                    val isEng = AppPreferences.isEnglish()
-                    val hours = TimeUnit.MILLISECONDS.toHours(remainingMillis)
-                    val minutes = TimeUnit.MILLISECONDS.toMinutes(remainingMillis) % 60
-                    val seconds = TimeUnit.MILLISECONDS.toSeconds(remainingMillis) % 60
-                    val prefix = if (isEng) "Time remaining" else "Tiempo restante"
-                    val formatted = if (hours > 0) {
-                        String.format(Locale.getDefault(), "$prefix: %02d:%02d:%02d", hours, minutes, seconds)
-                    } else {
-                        String.format(Locale.getDefault(), "$prefix: %02d:%02d", minutes, seconds)
+                    // 2. Health Check Accessibility Service every 2 seconds
+                    if (cycleCount % 2 == 0) {
+                        checkAndRecoverAccessibilityService()
                     }
 
-                    val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-                    notificationManager.notify(NOTIFICATION_ID, buildNotification(formatted))
+                    // 3. Fallback: Secondary Foreground Usage Watchdog
+                    checkForegroundPackageFallback()
+
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Error in foreground timer loop", t)
                 }
+
                 delay(1000)
+            }
+        }
+    }
+
+    private fun checkAndRecoverAccessibilityService() {
+        if (!AppPreferences.isFocusActive() && !AppPreferences.isAlwaysBlockEnabled() && !ScheduleEvaluator.isFocusActive()) {
+            return
+        }
+
+        val isEnabled = FocusAccessibilityService.isAccessibilityServiceEnabled(this)
+        val isConnected = FocusAccessibilityService.isConnected
+        val now = System.currentTimeMillis()
+        val heartbeatStale = (now - FocusAccessibilityService.lastHeartbeatTime) > 4000
+
+        if (!isEnabled || !isConnected || heartbeatStale) {
+            if (now - lastRestartAttemptTime > 3000) {
+                lastRestartAttemptTime = now
+                Log.w(TAG, "⚠️ FocusAccessibilityService unhealthy (enabled=$isEnabled, connected=$isConnected, stale=$heartbeatStale). Triggering resurrection...")
+                FocusAccessibilityService.restartAccessibilityService(this)
+            }
+        }
+    }
+
+    private fun checkForegroundPackageFallback() {
+        val isFocusActive = AppPreferences.isFocusActive() || AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()
+        if (!isFocusActive) return
+
+        val foregroundPkg = UsageStatsHelper.getForegroundPackage(this) ?: return
+        if (FocusInterceptor.shouldBlockPackage(packageName, foregroundPkg)) {
+            // Blocked app is in foreground! Launch BlockActivity as emergency barrier
+            try {
+                val blockIntent = Intent(this, BlockActivity::class.java).apply {
+                    putExtra(BlockActivity.EXTRA_BLOCKED_PACKAGE, foregroundPkg)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                startActivity(blockIntent)
+                Log.i(TAG, "🛡️ Fallback watchdog launched BlockActivity for $foregroundPkg")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error launching BlockActivity fallback", e)
             }
         }
     }

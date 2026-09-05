@@ -37,6 +37,18 @@ class FocusAccessibilityService : AccessibilityService() {
         private var lastBlockedTime = 0L
         private var lastBlockedPkg = ""
 
+        @Volatile
+        var isConnected: Boolean = false
+            private set
+
+        @Volatile
+        var lastHeartbeatTime: Long = 0L
+            private set
+
+        fun recordHeartbeat() {
+            lastHeartbeatTime = System.currentTimeMillis()
+        }
+
         fun clearDebounce() {
             lastBlockedPkg = ""
             lastBlockedTime = 0L
@@ -61,6 +73,38 @@ class FocusAccessibilityService : AccessibilityService() {
             }
             return false
         }
+
+        fun restartAccessibilityService(context: Context) {
+            try {
+                val myComponent = ComponentName(context, FocusAccessibilityService::class.java).flattenToString()
+                val currentSetting = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                ) ?: ""
+
+                val services = currentSetting.split(":")
+                    .filter { it.isNotBlank() && it != myComponent }
+                    .toMutableList()
+
+                // Step 1: Remove our service component
+                Settings.Secure.putString(
+                    context.contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                    services.joinToString(":")
+                )
+
+                // Step 2: Re-add our service component to trigger framework rebind
+                services.add(myComponent)
+                Settings.Secure.putString(
+                    context.contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                    services.joinToString(":")
+                )
+                Log.i(TAG, "🔄 Cycled ENABLED_ACCESSIBILITY_SERVICES to rebind service")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to cycle accessibility service setting", e)
+            }
+        }
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
@@ -68,29 +112,35 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                Intent.ACTION_SCREEN_OFF -> {
-                    SleepOverlayManager.resetDismissedTime()
-                }
-                Intent.ACTION_SCREEN_ON -> {
-                    val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
-                    if (keyguardManager?.isKeyguardLocked == false) {
+            try {
+                when (intent?.action) {
+                    Intent.ACTION_SCREEN_OFF -> {
+                        SleepOverlayManager.resetDismissedTime()
+                    }
+                    Intent.ACTION_SCREEN_ON -> {
+                        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
+                        if (keyguardManager?.isKeyguardLocked == false) {
+                            if (ScheduleEvaluator.isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
+                                SleepOverlayManager.showSleepNudge(this@FocusAccessibilityService)
+                            }
+                        }
+                    }
+                    Intent.ACTION_USER_PRESENT -> {
                         if (ScheduleEvaluator.isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
                             SleepOverlayManager.showSleepNudge(this@FocusAccessibilityService)
                         }
                     }
                 }
-                Intent.ACTION_USER_PRESENT -> {
-                    if (ScheduleEvaluator.isSleepScheduleActive() && SleepOverlayManager.canShowNudge()) {
-                        SleepOverlayManager.showSleepNudge(this@FocusAccessibilityService)
-                    }
-                }
+            } catch (e: Throwable) {
+                Log.e(TAG, "Error in screenStateReceiver", e)
             }
         }
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        isConnected = true
+        recordHeartbeat()
         try {
             AppPreferences.init(applicationContext)
         } catch (e: Exception) {
@@ -129,6 +179,7 @@ class FocusAccessibilityService : AccessibilityService() {
         watchdogJob = serviceScope.launch {
             var blockedPackageCounter = 0
             while (isActive) {
+                recordHeartbeat()
                 try {
                     val root = rootInActiveWindow
                     val pkg = root?.packageName?.toString() ?: ""
@@ -157,8 +208,9 @@ class FocusAccessibilityService : AccessibilityService() {
                             blockedPackageCounter = 0
                         }
                     }
-                } catch (e: Exception) {
-                    // Ignore window retrieval errors
+                } catch (t: Throwable) {
+                    // Prevent any exception from killing the watchdog coroutine
+                    Log.e(TAG, "Error in watchdog iteration", t)
                 }
                 delay(300)
             }
@@ -167,18 +219,23 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        recordHeartbeat()
 
-        val pkgCharSequence = event.packageName ?: return
-        val packageName = pkgCharSequence.toString()
+        try {
+            val pkgCharSequence = event.packageName ?: return
+            val packageName = pkgCharSequence.toString()
 
-        if (ScheduleEvaluator.isSleepScheduleActive()) {
-            checkSleepSchedule(packageName)
-        } else {
-            checkAndBlockPackage(packageName)
-            val root = rootInActiveWindow
-            if (root != null) {
-                checkBrowserUrls(root, packageName)
+            if (ScheduleEvaluator.isSleepScheduleActive()) {
+                checkSleepSchedule(packageName)
+            } else {
+                checkAndBlockPackage(packageName)
+                val root = rootInActiveWindow
+                if (root != null) {
+                    checkBrowserUrls(root, packageName)
+                }
             }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Unhandled exception in onAccessibilityEvent", t)
         }
     }
 
@@ -304,6 +361,7 @@ class FocusAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        isConnected = false
         try {
             unregisterReceiver(screenStateReceiver)
         } catch (e: Exception) {
