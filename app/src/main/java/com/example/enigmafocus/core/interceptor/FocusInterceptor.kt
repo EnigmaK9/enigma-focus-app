@@ -46,16 +46,11 @@ object FocusInterceptor {
                packageName.contains("clockpackage")
     }
 
-    fun isLauncherPackage(packageName: String): Boolean {
-        return packageName.contains("launcher") ||
-               packageName == "com.miui.home" ||
-               packageName == "com.sec.android.app.launcher" ||
-               packageName == "com.huawei.android.launcher" ||
-               packageName == "com.oppo.launcher" ||
-               packageName == "com.vivo.launcher"
+    fun isLauncherPackage(packageName: String, context: Context? = null): Boolean {
+        return LauncherDetector.isHomeLauncher(context, packageName)
     }
 
-    fun shouldBlockPackage(ownPackageName: String, packageName: String, calendar: Calendar = Calendar.getInstance()): Boolean {
+    fun shouldBlockPackage(ownPackageName: String, packageName: String, calendar: Calendar = Calendar.getInstance(), context: Context? = null): Boolean {
         if (packageName.isBlank() ||
             packageName == ownPackageName ||
             packageName == "android" ||
@@ -63,7 +58,7 @@ object FocusInterceptor {
             packageName.contains("systemui") ||
             packageName.contains("inputmethod") ||
             isEmergencyPackage(ownPackageName, packageName) ||
-            isLauncherPackage(packageName)
+            isLauncherPackage(packageName, context)
         ) {
             return false
         }

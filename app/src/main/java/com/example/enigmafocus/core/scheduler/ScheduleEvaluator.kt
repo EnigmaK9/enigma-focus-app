@@ -28,10 +28,7 @@ object ScheduleEvaluator {
             }
         }
 
-        // Fallback default: 22:30 to 06:30 overnight check
-        val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
-        val isOvernight = currentMinutes >= (22 * 60 + 30) || currentMinutes < (6 * 60 + 30)
-        return isOvernight
+        return false
     }
 
     fun isFocusActive(calendar: Calendar = Calendar.getInstance()): Boolean {

@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.enigmafocus.data.AppStrings
+import com.example.enigmafocus.manager.BatteryOptimizationHelper
 import com.example.enigmafocus.manager.GrayscaleManager
 
 @Composable
@@ -337,6 +338,99 @@ fun SettingsScreen(
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold
                     )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3b. Background Shield & Battery Optimization Card (Anti-OEM Kill)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (state.isIgnoringBatteryOptimizations) Color(0xFF1B5E20) else Color(0xFF4E342E)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = null,
+                            tint = if (state.isIgnoringBatteryOptimizations) Color(0xFF81C784) else Color(0xFFFFB74D),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = AppStrings.get("battery_shield_title", isEng),
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = if (state.isIgnoringBatteryOptimizations) AppStrings.get("battery_shield_active", isEng) else AppStrings.get("battery_shield_inactive", isEng),
+                            color = if (state.isIgnoringBatteryOptimizations) Color(0xFF81C784) else Color(0xFFFFB74D),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = AppStrings.get("battery_shield_desc", isEng),
+                    color = Color(0xFFB0B0B0),
+                    fontSize = 13.sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(context)
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (state.isIgnoringBatteryOptimizations) Color(0xFF2C2C2C) else Color(0xFF4CAF50)
+                        )
+                    ) {
+                        Text(
+                            text = AppStrings.get("btn_ignore_battery", isEng),
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            BatteryOptimizationHelper.openOemAutoStartSettings(context)
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = AppStrings.get("btn_oem_autostart", isEng),
+                            color = Color(0xFF81C784),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }

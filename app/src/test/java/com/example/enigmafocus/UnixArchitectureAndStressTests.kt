@@ -237,4 +237,62 @@ class UnixArchitectureAndStressTests {
         assertEquals(12, loaded[0].endHour)
         assertFalse(loaded[0].label.contains(";;;"))
     }
+
+    @Test
+    fun testZeroBypass_blacklistedAppsStillBlockedDuringSleepHours() {
+        AppPreferences.setAlwaysBlockEnabled(true)
+        AppPreferences.setBlockedPackages(setOf("com.instagram.android", "com.zhiliaoapp.musically"))
+
+        val calMidnight = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 45)
+        }
+
+        assertTrue(
+            "Instagram must remain strictly blocked during night/sleep hours",
+            FocusInterceptor.shouldBlockPackage("com.example.enigmafocus", "com.instagram.android", calMidnight)
+        )
+        assertTrue(
+            "TikTok must remain strictly blocked during night/sleep hours",
+            FocusInterceptor.shouldBlockPackage("com.example.enigmafocus", "com.zhiliaoapp.musically", calMidnight)
+        )
+    }
+
+    @Test
+    fun testScheduleEvaluator_disabledSleepIntervalIsRespected() {
+        val disabledSleep = FocusInterval(
+            id = "sleep_disabled",
+            label = "Rest / Sleep",
+            startHour = 22,
+            startMinute = 30,
+            endHour = 6,
+            endMinute = 30,
+            isEnabled = false
+        )
+        AppPreferences.saveIntervals(listOf(disabledSleep))
+
+        val calNight = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 30)
+        }
+
+        assertFalse(
+            "When user disables sleep interval, sleep schedule must not force-activate via hardcoded fallback",
+            ScheduleEvaluator.isSleepScheduleActive(calNight)
+        )
+    }
+
+    @Test
+    fun testLauncherDetector_recognizesNonStandardLaunchers() {
+        val nonStandardLaunchers = listOf(
+            "ginlemon.flowerfree",
+            "ginlemon.flowerpro",
+            "bitpit.launcher",
+            "ch.deletescape.lawnchair"
+        )
+        for (pkg in nonStandardLaunchers) {
+            assertTrue("Expected $pkg to be recognized as launcher", FocusInterceptor.isLauncherPackage(pkg))
+            assertFalse("Launcher $pkg must never be blocked", FocusInterceptor.shouldBlockPackage("com.example.enigmafocus", pkg))
+        }
+    }
 }

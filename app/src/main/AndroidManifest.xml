@@ -59,6 +59,8 @@
             android:name=".ui.block.BlockActivity"
             android:exported="true"
             android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
             android:launchMode="singleTask"
             android:theme="@style/Theme.EnigmaFocus" />
 
@@ -81,6 +83,7 @@
             android:name=".service.FocusForegroundService"
             android:foregroundServiceType="specialUse"
             android:exported="false"
+            android:directBootAware="true"
             android:stopWithTask="false">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -91,8 +94,10 @@
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true"
+            android:directBootAware="true"
             android:enabled="true">
             <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />

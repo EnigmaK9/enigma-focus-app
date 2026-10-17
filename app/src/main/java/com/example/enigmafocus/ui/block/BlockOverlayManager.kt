@@ -53,7 +53,10 @@ object BlockOverlayManager {
 
     private var currentLifecycleOwner: OverlayLifecycleOwner? = null
 
-    fun isShowing(): Boolean = isOverlayShowing
+    fun isShowing(): Boolean {
+        val view = overlayView
+        return isOverlayShowing && view != null && view.isAttachedToWindow
+    }
 
     fun getCurrentPackage(): String = currentPackage
 
@@ -62,9 +65,14 @@ object BlockOverlayManager {
         blockedPackage: String,
         onUnlockTemporary: () -> Unit
     ) {
-        // If already showing for the exact same package, never re-create
-        if (isOverlayShowing) {
+        // Verify if already showing and attached for the exact same package
+        if (isShowing() && currentPackage == blockedPackage) {
             return
+        }
+
+        // If stale or showing for a different package, clean up first
+        if (isOverlayShowing || overlayView != null) {
+            hideOverlay(service)
         }
 
         try {
@@ -83,7 +91,8 @@ object BlockOverlayManager {
                 type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
                 flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_FULLSCREEN
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                        WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
                 format = PixelFormat.TRANSLUCENT
                 gravity = Gravity.CENTER
             }
@@ -125,15 +134,21 @@ object BlockOverlayManager {
             Log.i(TAG, "✅ TYPE_ACCESSIBILITY_OVERLAY attached for $blockedPackage")
         } catch (e: Exception) {
             Log.e(TAG, "Error displaying accessibility overlay", e)
+            isOverlayShowing = false
+            overlayView = null
+            currentPackage = ""
         }
     }
 
     fun hideOverlay(context: Context) {
-        if (!isOverlayShowing || overlayView == null) return
+        if (!isOverlayShowing && overlayView == null) return
 
         try {
-            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            windowManager.removeView(overlayView)
+            val view = overlayView
+            if (view != null) {
+                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                windowManager.removeView(view)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error removing overlay", e)
         } finally {

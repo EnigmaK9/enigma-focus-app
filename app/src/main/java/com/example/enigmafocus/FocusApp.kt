@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import com.example.enigmafocus.data.AppPreferences
+import com.example.enigmafocus.manager.FocusSessionManager
 
 class FocusApp : Application() {
 
@@ -17,6 +18,7 @@ class FocusApp : Application() {
         super.onCreate()
         AppPreferences.init(this)
         createNotificationChannels()
+        FocusSessionManager.syncSentinelService(this)
     }
 
     private fun createNotificationChannels() {

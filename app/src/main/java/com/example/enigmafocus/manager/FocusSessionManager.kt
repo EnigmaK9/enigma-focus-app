@@ -3,11 +3,41 @@ package com.example.enigmafocus.manager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
+import com.example.enigmafocus.core.scheduler.ScheduleEvaluator
 import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.service.FocusAccessibilityService
 import com.example.enigmafocus.service.FocusForegroundService
 
 object FocusSessionManager {
+
+    private const val TAG = "FocusSessionManager"
+
+    fun syncSentinelService(context: Context) {
+        try {
+            val shouldRun = AppPreferences.isFocusActive() ||
+                            AppPreferences.isAlwaysBlockEnabled() ||
+                            ScheduleEvaluator.isFocusActive()
+
+            if (shouldRun && !AppPreferences.isFocusActive()) {
+                val intent = Intent(context, FocusForegroundService::class.java).apply {
+                    action = FocusForegroundService.ACTION_START_SENTINEL
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } else if (!shouldRun) {
+                val intent = Intent(context, FocusForegroundService::class.java).apply {
+                    action = FocusForegroundService.ACTION_STOP
+                }
+                context.startService(intent)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to sync sentinel foreground service from current context", e)
+        }
+    }
 
     fun startSession(context: Context, durationMinutes: Int) {
         val endTimestamp = if (durationMinutes > 0) {
@@ -31,16 +61,20 @@ object FocusSessionManager {
         }
 
         // Start Foreground Service for ongoing timer notification
-        val intent = Intent(context, FocusForegroundService::class.java).apply {
-            action = FocusForegroundService.ACTION_START
-            putExtra(FocusForegroundService.EXTRA_DURATION_MINUTES, durationMinutes)
-            putExtra(FocusForegroundService.EXTRA_END_TIMESTAMP, endTimestamp)
-        }
+        try {
+            val intent = Intent(context, FocusForegroundService::class.java).apply {
+                action = FocusForegroundService.ACTION_START
+                putExtra(FocusForegroundService.EXTRA_DURATION_MINUTES, durationMinutes)
+                putExtra(FocusForegroundService.EXTRA_END_TIMESTAMP, endTimestamp)
+            }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting FocusForegroundService", e)
         }
     }
 
@@ -52,11 +86,15 @@ object FocusSessionManager {
         // Always restore full normal colors on session stop
         GrayscaleManager.setGrayscaleEnabled(context, false)
 
-        // Stop Foreground Service
-        val intent = Intent(context, FocusForegroundService::class.java).apply {
-            action = FocusForegroundService.ACTION_STOP
+        // Stop Foreground Service (or transition to Sentinel if Always Block is on)
+        try {
+            val intent = Intent(context, FocusForegroundService::class.java).apply {
+                action = FocusForegroundService.ACTION_STOP
+            }
+            context.startService(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping FocusForegroundService", e)
         }
-        context.startService(intent)
     }
 
     fun toggleSession(context: Context, defaultDurationMinutes: Int = 25) {

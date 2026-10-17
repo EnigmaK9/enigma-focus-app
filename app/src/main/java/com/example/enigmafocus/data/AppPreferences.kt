@@ -157,7 +157,16 @@ object AppPreferences {
     val intervalsFlow: StateFlow<List<FocusInterval>> = _intervalsFlow.asStateFlow()
 
     fun init(context: Context) {
-        prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val appContext = context.applicationContext ?: context
+        prefs = try {
+            appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        } catch (e: IllegalStateException) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                appContext.createDeviceProtectedStorageContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            } else {
+                throw e
+            }
+        }
 
         // Initialize defaults if not set
         if (!prefs.contains(KEY_BLOCKED_PACKAGES)) {

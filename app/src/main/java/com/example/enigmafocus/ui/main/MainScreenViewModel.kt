@@ -9,6 +9,7 @@ import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.data.FocusInterval
 import com.example.enigmafocus.data.InstalledAppsRepository
 import com.example.enigmafocus.data.JsonConfigManager
+import com.example.enigmafocus.manager.BatteryOptimizationHelper
 import com.example.enigmafocus.manager.FocusSessionManager
 import com.example.enigmafocus.manager.GrayscaleManager
 import com.example.enigmafocus.service.FocusAccessibilityService
@@ -28,6 +29,7 @@ data class MainUiState(
     val isGrayscaleActive: Boolean = false,
     val hasSecureSettingsPermission: Boolean = false,
     val isAccessibilityEnabled: Boolean = false,
+    val isIgnoringBatteryOptimizations: Boolean = false,
     val isAutoGrayscaleEnabled: Boolean = true,
     val isAlwaysBlockEnabled: Boolean = true,
     val isStrictModeEnabled: Boolean = false,
@@ -125,6 +127,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         val hasSecure = GrayscaleManager.hasSecureSettingsPermission(context)
         val isGray = GrayscaleManager.isGrayscaleActive(context)
         val isAccess = FocusAccessibilityService.isAccessibilityServiceEnabled(context)
+        val isIgnoringBattery = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
         val isFocus = AppPreferences.isFocusActive()
         val duration = AppPreferences.getFocusDurationMinutes()
         val autoGray = AppPreferences.isAutoGrayscaleEnabled()
@@ -141,6 +144,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
                 hasSecureSettingsPermission = hasSecure,
                 isGrayscaleActive = isGray,
                 isAccessibilityEnabled = isAccess,
+                isIgnoringBatteryOptimizations = isIgnoringBattery,
                 isFocusActive = isFocus,
                 selectedDurationMinutes = duration,
                 isAutoGrayscaleEnabled = autoGray,
@@ -153,6 +157,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
                 activeScheduledInterval = activeInterval
             )
         }
+
+        FocusSessionManager.syncSentinelService(context)
 
         if (isFocus) {
             startLocalTimerLoop()
@@ -208,6 +214,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setAlwaysBlock(enabled: Boolean) {
         AppPreferences.setAlwaysBlockEnabled(enabled)
+        FocusSessionManager.syncSentinelService(getApplication())
     }
 
     fun setStrictMode(enabled: Boolean) {
@@ -225,14 +232,17 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
     fun toggleInterval(id: String) {
         AppPreferences.toggleIntervalEnabled(id)
+        FocusSessionManager.syncSentinelService(getApplication())
     }
 
     fun addOrUpdateInterval(interval: FocusInterval) {
         AppPreferences.addOrUpdateInterval(interval)
+        FocusSessionManager.syncSentinelService(getApplication())
     }
 
     fun removeInterval(id: String) {
         AppPreferences.removeInterval(id)
+        FocusSessionManager.syncSentinelService(getApplication())
     }
 
     fun exportConfigJson(): String {

@@ -33,6 +33,7 @@ class FocusForegroundService : Service() {
     companion object {
         private const val TAG = "FocusForegroundService"
         const val ACTION_START = "ACTION_START_FOCUS"
+        const val ACTION_START_SENTINEL = "ACTION_START_SENTINEL"
         const val ACTION_STOP = "ACTION_STOP_FOCUS"
         const val EXTRA_DURATION_MINUTES = "extra_duration_minutes"
         const val EXTRA_END_TIMESTAMP = "extra_end_timestamp"
@@ -42,36 +43,66 @@ class FocusForegroundService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     private var timerJob: Job? = null
     private var lastRestartAttemptTime = 0L
+    private var isSentinelOnlyMode = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        try {
+            AppPreferences.init(applicationContext)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing preferences in foreground service", e)
+        }
+
         val action = intent?.action
 
         if (action == ACTION_STOP) {
             stopFocusService()
-            return START_NOT_STICKY
+            return if (AppPreferences.isAlwaysBlockEnabled()) START_STICKY else START_NOT_STICKY
         }
 
         if (action == ACTION_START) {
+            isSentinelOnlyMode = false
             val endTimestamp = intent.getLongExtra(EXTRA_END_TIMESTAMP, 0L)
             val durationMinutes = intent.getIntExtra(EXTRA_DURATION_MINUTES, 25)
-            startForegroundWithNotification(endTimestamp, durationMinutes)
+            startForegroundWithNotification(endTimestamp, durationMinutes, sentinelOnly = false)
             startTimer(endTimestamp)
+            return START_STICKY
+        }
+
+        // ACTION_START_SENTINEL or null intent (restarted by OS via START_STICKY)
+        if (AppPreferences.isFocusActive()) {
+            isSentinelOnlyMode = false
+            val endTimestamp = AppPreferences.getFocusEndTimestamp()
+            val durationMinutes = AppPreferences.getFocusDurationMinutes()
+            startForegroundWithNotification(endTimestamp, durationMinutes, sentinelOnly = false)
+            startTimer(endTimestamp)
+        } else if (AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()) {
+            startSentinelMode()
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         return START_STICKY
     }
 
-    private fun startForegroundWithNotification(endTimestamp: Long, durationMinutes: Int) {
+    private fun startSentinelMode() {
+        isSentinelOnlyMode = true
+        startForegroundWithNotification(0L, 0, sentinelOnly = true)
+        startTimer(0L)
+    }
+
+    private fun startForegroundWithNotification(endTimestamp: Long, durationMinutes: Int, sentinelOnly: Boolean) {
         val isEng = AppPreferences.isEnglish()
-        val initialText = if (endTimestamp > 0) {
-            if (isEng) "Focus Mode active: $durationMinutes min" else "Modo Enfoque activo: $durationMinutes min"
-        } else {
-            if (isEng) "Continuous Focus Mode active" else "Modo Enfoque continuo activo"
+        val initialText = when {
+            sentinelOnly -> if (isEng) "Distraction shield active" else "Escudo contra distracciones activo"
+            endTimestamp > 0 -> if (isEng) "Focus Mode active: $durationMinutes min" else "Modo Enfoque activo: $durationMinutes min"
+            else -> if (isEng) "Continuous Focus Mode active" else "Modo Enfoque continuo activo"
         }
 
-        val notification = buildNotification(initialText)
+        val notification = buildNotification(initialText, sentinelOnly)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
@@ -84,7 +115,7 @@ class FocusForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(contentText: String): Notification {
+    private fun buildNotification(contentText: String, sentinelOnly: Boolean = false): Notification {
         val isEng = AppPreferences.isEnglish()
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -94,24 +125,42 @@ class FocusForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val stopIntent = Intent(this, FocusForegroundService::class.java).apply {
-            action = ACTION_STOP
+        val title = if (sentinelOnly) {
+            if (isEng) "🛡️ Enigma Focus Shield" else "🛡️ Escudo Enigma Focus"
+        } else {
+            if (isEng) "🛡️ Focus Session" else "🛡️ Sesión de Concentración"
         }
-        val pendingStop = PendingIntent.getService(
-            this, 1, stopIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
-        return NotificationCompat.Builder(this, FocusApp.FOCUS_NOTIFICATION_CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, FocusApp.FOCUS_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(if (isEng) "🛡️ Focus Session" else "🛡️ Sesión de Concentración")
+            .setContentTitle(title)
             .setContentText(contentText)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(pendingOpenApp)
-            .addAction(0, if (isEng) "Stop" else "Detener", pendingStop)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setPriority(if (sentinelOnly) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+
+        if (!sentinelOnly && !AppPreferences.isStrictModeEnabled()) {
+            val stopIntent = Intent(this, FocusForegroundService::class.java).apply {
+                action = ACTION_STOP
+            }
+            val pendingStop = PendingIntent.getService(
+                this, 1, stopIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(0, if (isEng) "Stop" else "Detener", pendingStop)
+        }
+
+        return builder.build()
+    }
+
+    private fun isDeviceInteractive(): Boolean {
+        return try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+            powerManager?.isInteractive ?: true
+        } catch (e: Exception) {
+            true
+        }
     }
 
     private fun startTimer(endTimestamp: Long) {
@@ -122,10 +171,9 @@ class FocusForegroundService : Service() {
                 cycleCount++
                 try {
                     // 1. Session Duration & Notification update
-                    if (endTimestamp > 0) {
+                    if (!isSentinelOnlyMode && endTimestamp > 0) {
                         val remainingMillis = endTimestamp - System.currentTimeMillis()
                         if (remainingMillis <= 0) {
-                            // Completed!
                             onSessionCompleted()
                             break
                         }
@@ -142,16 +190,19 @@ class FocusForegroundService : Service() {
                         }
 
                         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-                        notificationManager.notify(NOTIFICATION_ID, buildNotification(formatted))
+                        notificationManager.notify(NOTIFICATION_ID, buildNotification(formatted, sentinelOnly = false))
                     }
 
-                    // 2. Health Check Accessibility Service every 2 seconds
-                    if (cycleCount % 2 == 0) {
-                        checkAndRecoverAccessibilityService()
-                    }
+                    // Only run active watchdog checks when the screen is interactive (zero battery drain when screen off)
+                    if (isDeviceInteractive()) {
+                        // 2. Health Check Accessibility Service every 2 seconds
+                        if (cycleCount % 2 == 0) {
+                            checkAndRecoverAccessibilityService()
+                        }
 
-                    // 3. Fallback: Secondary Foreground Usage Watchdog
-                    checkForegroundPackageFallback()
+                        // 3. Fallback: Secondary Foreground Usage Watchdog
+                        checkForegroundPackageFallback()
+                    }
 
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error in foreground timer loop", t)
@@ -186,14 +237,16 @@ class FocusForegroundService : Service() {
         if (!isFocusActive) return
 
         val foregroundPkg = UsageStatsHelper.getForegroundPackage(this) ?: return
-        if (FocusInterceptor.shouldBlockPackage(packageName, foregroundPkg)) {
+        if (FocusInterceptor.shouldBlockPackage(packageName, foregroundPkg, context = this)) {
+            if (BlockActivity.isBlockScreenShowing) return
             // Blocked app is in foreground! Launch BlockActivity as emergency barrier
             try {
                 val blockIntent = Intent(this, BlockActivity::class.java).apply {
                     putExtra(BlockActivity.EXTRA_BLOCKED_PACKAGE, foregroundPkg)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                             Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_NO_ANIMATION
                 }
                 startActivity(blockIntent)
                 Log.i(TAG, "🛡️ Fallback watchdog launched BlockActivity for $foregroundPkg")
@@ -208,8 +261,12 @@ class FocusForegroundService : Service() {
         if (AppPreferences.isAutoGrayscaleEnabled()) {
             GrayscaleManager.setGrayscaleEnabled(this, false)
         }
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        if (AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()) {
+            startSentinelMode()
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     private fun stopFocusService() {
@@ -218,8 +275,12 @@ class FocusForegroundService : Service() {
         if (AppPreferences.isAutoGrayscaleEnabled()) {
             GrayscaleManager.setGrayscaleEnabled(this, false)
         }
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        if (AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()) {
+            startSentinelMode()
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     override fun onDestroy() {

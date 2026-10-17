@@ -106,7 +106,13 @@ object AppStrings {
         "btn_export_json" to "Export Configuration (JSON)",
         "btn_import_json" to "Import Configuration (JSON)",
         "unix_intents_title" to "CLI & Tasker Automation",
-        "unix_intents_desc" to "Control focus and grayscale from scripts or terminal via ADB broadcast intents."
+        "unix_intents_desc" to "Control focus and grayscale from scripts or terminal via ADB broadcast intents.",
+        "battery_shield_title" to "Background Shield & Battery",
+        "battery_shield_active" to "Unrestricted (Protected against OS kills)",
+        "battery_shield_inactive" to "Battery restricted (May stop blocking in background)",
+        "battery_shield_desc" to "Exempt Enigma Focus from Doze & OEM battery killers (Xiaomi, Samsung, Huawei) so blocking never stops.",
+        "btn_ignore_battery" to "Disable Battery Optimization",
+        "btn_oem_autostart" to "OEM Auto-Start Settings"
     )
 
     private val esStrings = mapOf(
@@ -209,6 +215,12 @@ object AppStrings {
         "btn_export_json" to "Exportar Configuración (JSON)",
         "btn_import_json" to "Importar Configuración (JSON)",
         "unix_intents_title" to "Automatización por CLI y Tasker",
-        "unix_intents_desc" to "Controla el enfoque y la escala de grises desde scripts o terminal mediante Intents de broadcast."
+        "unix_intents_desc" to "Controla el enfoque y la escala de grises desde scripts o terminal mediante Intents de broadcast.",
+        "battery_shield_title" to "Blindaje en Segundo Plano y Batería",
+        "battery_shield_active" to "Sin restricciones (Protegido contra cierres del sistema)",
+        "battery_shield_inactive" to "Restringido por batería (Puede dejar de bloquear en fondo)",
+        "battery_shield_desc" to "Exime a Enigma Focus del ahorro de batería de Xiaomi, Samsung y Huawei para que el bloqueo nunca se detenga.",
+        "btn_ignore_battery" to "Quitar Restricción de Batería",
+        "btn_oem_autostart" to "Ajustes Auto-Inicio (OEM)"
     )
 }
