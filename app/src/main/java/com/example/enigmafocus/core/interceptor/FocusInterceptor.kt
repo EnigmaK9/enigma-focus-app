@@ -65,12 +65,13 @@ object FocusInterceptor {
 
         val isFocusActive = ScheduleEvaluator.isFocusActive(calendar)
         val isAlwaysBlock = AppPreferences.isAlwaysBlockEnabled()
+        val isHourlyLimit = AppPreferences.isHourlyLimitEnabled()
 
-        if (!isFocusActive && !isAlwaysBlock) {
+        if (!isFocusActive && !isAlwaysBlock && !isHourlyLimit) {
             return false
         }
 
-        if (AppPreferences.isTemporarilyWhitelisted(packageName)) {
+        if (AppPreferences.isTemporarilyWhitelisted(packageName, calendar.timeInMillis)) {
             return false
         }
 

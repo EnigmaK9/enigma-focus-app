@@ -58,16 +58,20 @@ object BlockOverlayManager {
         return isOverlayShowing && view != null && view.isAttachedToWindow
     }
 
+    fun isAnyBlockBarrierShowing(): Boolean {
+        return isShowing() || BlockActivity.isBlockScreenShowing
+    }
+
     fun getCurrentPackage(): String = currentPackage
 
     fun showOverlay(
         service: AccessibilityService,
         blockedPackage: String,
         onUnlockTemporary: () -> Unit
-    ) {
+    ): Boolean {
         // Verify if already showing and attached for the exact same package
         if (isShowing() && currentPackage == blockedPackage) {
-            return
+            return true
         }
 
         // If stale or showing for a different package, clean up first
@@ -132,11 +136,13 @@ object BlockOverlayManager {
             overlayView = composeView
             isOverlayShowing = true
             Log.i(TAG, "✅ TYPE_ACCESSIBILITY_OVERLAY attached for $blockedPackage")
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "Error displaying accessibility overlay", e)
             isOverlayShowing = false
             overlayView = null
             currentPackage = ""
+            return false
         }
     }
 

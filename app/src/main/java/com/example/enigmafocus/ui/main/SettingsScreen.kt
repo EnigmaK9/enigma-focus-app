@@ -270,6 +270,8 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // 3. Accessibility Service Card
+        val isAccessibilityHealthy = state.isAccessibilityEnabled && state.isAccessibilityConnected
+        val isAccessibilityStopped = state.isAccessibilityEnabled && !state.isAccessibilityConnected
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -282,14 +284,22 @@ fun SettingsScreen(
                             .size(42.dp)
                             .clip(CircleShape)
                             .background(
-                                if (state.isAccessibilityEnabled) Color(0xFF1B5E20) else Color(0xFF424242)
+                                when {
+                                    isAccessibilityHealthy -> Color(0xFF1B5E20)
+                                    isAccessibilityStopped -> Color(0xFF4E342E)
+                                    else -> Color(0xFF424242)
+                                }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.AccessibilityNew,
                             contentDescription = null,
-                            tint = if (state.isAccessibilityEnabled) Color(0xFF81C784) else Color(0xFFB0B0B0),
+                            tint = when {
+                                isAccessibilityHealthy -> Color(0xFF81C784)
+                                isAccessibilityStopped -> Color(0xFFFFB74D)
+                                else -> Color(0xFFB0B0B0)
+                            },
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -302,8 +312,16 @@ fun SettingsScreen(
                             fontSize = 16.sp
                         )
                         Text(
-                            text = if (state.isAccessibilityEnabled) AppStrings.get("permission_accessibility_active", isEng) else AppStrings.get("permission_accessibility_inactive", isEng),
-                            color = if (state.isAccessibilityEnabled) Color(0xFF81C784) else Color(0xFFFF8A80),
+                            text = when {
+                                isAccessibilityHealthy -> AppStrings.get("permission_accessibility_active", isEng)
+                                isAccessibilityStopped -> AppStrings.get("permission_accessibility_disconnected", isEng)
+                                else -> AppStrings.get("permission_accessibility_inactive", isEng)
+                            },
+                            color = when {
+                                isAccessibilityHealthy -> Color(0xFF81C784)
+                                isAccessibilityStopped -> Color(0xFFFFB74D)
+                                else -> Color(0xFFFF8A80)
+                            },
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )

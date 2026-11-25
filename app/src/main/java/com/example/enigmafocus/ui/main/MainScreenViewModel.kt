@@ -29,6 +29,7 @@ data class MainUiState(
     val isGrayscaleActive: Boolean = false,
     val hasSecureSettingsPermission: Boolean = false,
     val isAccessibilityEnabled: Boolean = false,
+    val isAccessibilityConnected: Boolean = false,
     val isIgnoringBatteryOptimizations: Boolean = false,
     val isAutoGrayscaleEnabled: Boolean = true,
     val isAlwaysBlockEnabled: Boolean = true,
@@ -36,6 +37,8 @@ data class MainUiState(
     val isEnglish: Boolean = true,
     val selectedLanguagePreference: String = "system",
     val isAntiImpulseEnabled: Boolean = false,
+    val isHourlyLimitEnabled: Boolean = true,
+    val dailyUsedMinutes: Int = 0,
     val scheduledIntervals: List<FocusInterval> = emptyList(),
     val activeScheduledInterval: FocusInterval? = null,
     val installedApps: List<AppInfo> = emptyList(),
@@ -103,6 +106,18 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         viewModelScope.launch {
+            AppPreferences.hourlyLimitFlow.collect { hourly ->
+                _uiState.update { it.copy(isHourlyLimitEnabled = hourly) }
+            }
+        }
+
+        viewModelScope.launch {
+            AppPreferences.dailyUsedMinutesFlow.collect { used ->
+                _uiState.update { it.copy(dailyUsedMinutes = used) }
+            }
+        }
+
+        viewModelScope.launch {
             AppPreferences.intervalsFlow.collect { intervals ->
                 val active = AppPreferences.getActiveScheduledInterval()
                 _uiState.update { it.copy(scheduledIntervals = intervals, activeScheduledInterval = active) }
@@ -127,6 +142,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         val hasSecure = GrayscaleManager.hasSecureSettingsPermission(context)
         val isGray = GrayscaleManager.isGrayscaleActive(context)
         val isAccess = FocusAccessibilityService.isAccessibilityServiceEnabled(context)
+        val isAccessConnected = FocusAccessibilityService.isConnected
         val isIgnoringBattery = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
         val isFocus = AppPreferences.isFocusActive()
         val duration = AppPreferences.getFocusDurationMinutes()
@@ -136,6 +152,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         val isEng = AppPreferences.isEnglish()
         val selectedLang = AppPreferences.getSelectedLanguagePreference()
         val antiImpulse = AppPreferences.isAntiImpulseEnabled()
+        val hourlyLimit = AppPreferences.isHourlyLimitEnabled()
+        val dailyUsed = AppPreferences.getDailyUsedMinutes()
         val intervals = AppPreferences.getIntervals()
         val activeInterval = AppPreferences.getActiveScheduledInterval()
 
@@ -144,6 +162,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
                 hasSecureSettingsPermission = hasSecure,
                 isGrayscaleActive = isGray,
                 isAccessibilityEnabled = isAccess,
+                isAccessibilityConnected = isAccessConnected,
                 isIgnoringBatteryOptimizations = isIgnoringBattery,
                 isFocusActive = isFocus,
                 selectedDurationMinutes = duration,
@@ -153,12 +172,28 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
                 isEnglish = isEng,
                 selectedLanguagePreference = selectedLang,
                 isAntiImpulseEnabled = antiImpulse,
+                isHourlyLimitEnabled = hourlyLimit,
+                dailyUsedMinutes = dailyUsed,
                 scheduledIntervals = intervals,
                 activeScheduledInterval = activeInterval
             )
         }
 
         FocusSessionManager.syncSentinelService(context)
+
+        // Automatically recover from OS kills (e.g. MIUI SwipeUpClean leaving service in Crashed state)
+        if (isAccess && !isAccessConnected && hasSecure) {
+            FocusAccessibilityService.restartAccessibilityService(context)
+            viewModelScope.launch {
+                delay(1200L)
+                _uiState.update {
+                    it.copy(
+                        isAccessibilityEnabled = FocusAccessibilityService.isAccessibilityServiceEnabled(context),
+                        isAccessibilityConnected = FocusAccessibilityService.isConnected
+                    )
+                }
+            }
+        }
 
         if (isFocus) {
             startLocalTimerLoop()
@@ -228,6 +263,11 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setAntiImpulse(enabled: Boolean) {
         AppPreferences.setAntiImpulseEnabled(enabled)
+    }
+
+    fun setHourlyLimit(enabled: Boolean) {
+        AppPreferences.setHourlyLimitEnabled(enabled)
+        FocusSessionManager.syncSentinelService(getApplication())
     }
 
     fun toggleInterval(id: String) {

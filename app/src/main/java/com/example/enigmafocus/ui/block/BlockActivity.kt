@@ -49,6 +49,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,7 +73,10 @@ class BlockActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_BLOCKED_PACKAGE = "blocked_package"
+        @Volatile
         var isBlockScreenShowing = false
+        @Volatile
+        var currentBlockedPackage = ""
     }
 
     private val blockedPkgState = mutableStateOf("")
@@ -140,6 +144,11 @@ class BlockActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (AppPreferences.isTemporarilyWhitelisted(blockedPkgState.value)) {
+            finishAndRemoveTask()
+            return
+        }
+        currentBlockedPackage = blockedPkgState.value
         isBlockScreenShowing = true
     }
 
@@ -150,6 +159,7 @@ class BlockActivity : ComponentActivity() {
 
     override fun onDestroy() {
         isBlockScreenShowing = false
+        currentBlockedPackage = ""
         FocusAccessibilityService.clearDebounce()
         super.onDestroy()
     }
@@ -356,9 +366,45 @@ fun DirectBreathingBlockScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             val isStrict = AppPreferences.isStrictModeEnabled()
+            val isHourlyLimitOn = AppPreferences.isHourlyLimitEnabled()
+            var remainingCooldownMillis by remember(packageName) {
+                mutableLongStateOf(AppPreferences.getRemainingHourlyCooldownMillis(packageName))
+            }
+            var dailyUsedMinutes by remember(packageName) {
+                mutableIntStateOf(AppPreferences.getDailyUsedMinutes())
+            }
+            var remainingDailyResetMillis by remember(packageName) {
+                mutableLongStateOf(AppPreferences.getRemainingDailyCapResetMillis())
+            }
 
-            if (!isStrict) {
-                // Secondary Button: Temporary Unlock (Only if strict mode is OFF)
+            LaunchedEffect(key1 = packageName) {
+                while (true) {
+                    val now = System.currentTimeMillis()
+                    remainingCooldownMillis = AppPreferences.getRemainingHourlyCooldownMillis(packageName, now)
+                    dailyUsedMinutes = AppPreferences.getDailyUsedMinutes(now)
+                    remainingDailyResetMillis = AppPreferences.getRemainingDailyCapResetMillis(now)
+                    delay(1000L)
+                }
+            }
+
+            if (!isStrict && isHourlyLimitOn) {
+                Text(
+                    text = String.format(
+                        AppStrings.get("daily_usage_counter", isEng),
+                        dailyUsedMinutes,
+                        AppPreferences.MAX_DAILY_UNLOCK_MINUTES
+                    ),
+                    color = if (dailyUsedMinutes >= AppPreferences.MAX_DAILY_UNLOCK_MINUTES) Color(0xFFFF8A80) else Color(0xFFB0BEC5),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            val isDailyCapReached = isHourlyLimitOn && dailyUsedMinutes >= AppPreferences.MAX_DAILY_UNLOCK_MINUTES
+
+            if (!isStrict && !isDailyCapReached && remainingCooldownMillis == 0L) {
+                // Secondary Button: Temporary Unlock (Only if strict mode is OFF, under daily cap, and hourly quota available)
                 OutlinedButton(
                     onClick = onUnlockTemporary,
                     enabled = secondsLeft == 0,
@@ -380,6 +426,66 @@ fun DirectBreathingBlockScreen(
                             color = if (secondsLeft == 0) Color(0xFFFFB74D) else Color(0xFF555555),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            } else if (!isStrict && isDailyCapReached) {
+                val totalMinutes = ((remainingDailyResetMillis + 59_999L) / 60_000L).coerceAtLeast(1L)
+                val resetLabel = if (totalMinutes >= 60L) {
+                    val hours = totalMinutes / 60L
+                    val minutes = totalMinutes % 60L
+                    if (minutes > 0L) "${hours}h ${minutes}m" else "${hours}h"
+                } else {
+                    "$totalMinutes min"
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF2B1818))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.HourglassTop,
+                            contentDescription = null,
+                            tint = Color(0xFFFF8A80),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = String.format(
+                                AppStrings.get("daily_cap_reached", isEng),
+                                dailyUsedMinutes,
+                                AppPreferences.MAX_DAILY_UNLOCK_MINUTES,
+                                resetLabel
+                            ),
+                            color = Color(0xFFFF8A80),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else if (!isStrict && remainingCooldownMillis > 0L) {
+                val cooldownMinutes = ((remainingCooldownMillis + 59_999L) / 60_000L).coerceAtLeast(1L)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF261E14))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.HourglassTop,
+                            contentDescription = null,
+                            tint = Color(0xFFFFB74D),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = String.format(AppStrings.get("hourly_limit_reached", isEng), cooldownMinutes),
+                            color = Color(0xFFFFB74D),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }

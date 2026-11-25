@@ -12,6 +12,7 @@ object JsonConfigManager {
         root.put("always_block", AppPreferences.isAlwaysBlockEnabled())
         root.put("auto_grayscale", AppPreferences.isAutoGrayscaleEnabled())
         root.put("strict_mode", AppPreferences.isStrictModeEnabled())
+        root.put("hourly_limit_1m", AppPreferences.isHourlyLimitEnabled())
         root.put("selected_duration_minutes", AppPreferences.getFocusDurationMinutes())
 
         // Blocked Packages
@@ -51,6 +52,11 @@ object JsonConfigManager {
             }
             if (root.has("strict_mode")) {
                 AppPreferences.setStrictModeEnabled(root.getBoolean("strict_mode"))
+            }
+            if (root.has("hourly_limit_1m")) {
+                AppPreferences.setHourlyLimitEnabled(root.getBoolean("hourly_limit_1m"))
+            } else if (root.has("daily_limit_1m")) {
+                AppPreferences.setHourlyLimitEnabled(root.getBoolean("daily_limit_1m"))
             }
 
             if (root.has("blocked_packages")) {

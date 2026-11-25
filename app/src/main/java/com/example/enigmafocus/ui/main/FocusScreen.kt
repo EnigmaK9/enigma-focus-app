@@ -96,8 +96,20 @@ fun FocusScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Warning banner if permissions are missing
-        if (!state.isAccessibilityEnabled || !state.hasSecureSettingsPermission) {
+        // Warning banner if permissions are missing or accessibility service was stopped by OS
+        val isAccessibilityHealthy = state.isAccessibilityEnabled && state.isAccessibilityConnected
+        if (!isAccessibilityHealthy || !state.hasSecureSettingsPermission) {
+            val warningTitle = when {
+                !state.isAccessibilityEnabled -> if (isEng) "Accessibility Service disabled" else "Accesibilidad desactivada"
+                !state.isAccessibilityConnected -> if (isEng) "Accessibility Service stopped by system" else "Servicio de Accesibilidad detenido por el sistema"
+                else -> if (isEng) "ADB Permission required for Grayscale" else "Permiso ADB pendiente para Escala de Grises"
+            }
+            val warningSubtitle = when {
+                state.isAccessibilityEnabled && !state.isAccessibilityConnected ->
+                    if (isEng) "Tap to re-enable Accessibility so blocking resumes." else "Toca para reactivar Accesibilidad y reanudar el bloqueo."
+                else ->
+                    if (isEng) "Tap to open system settings & diagnostics." else "Toca para revisar la configuración de permisos."
+            }
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -119,13 +131,13 @@ fun FocusScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (!state.hasSecureSettingsPermission) (if (isEng) "ADB Permission required for Grayscale" else "Permiso ADB pendiente para Escala de Grises") else (if (isEng) "Accessibility Service disabled" else "Accesibilidad desactivada"),
+                            text = warningTitle,
                             color = Color(0xFFFF8A80),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                         Text(
-                            text = if (isEng) "Tap to open system settings & diagnostics." else "Toca para revisar la configuración de permisos.",
+                            text = warningSubtitle,
                             color = Color(0xFFE0E0E0),
                             fontSize = 12.sp
                         )
@@ -682,6 +694,68 @@ fun FocusScreen(
                     Switch(
                         checked = state.isAlwaysBlockEnabled,
                         onCheckedChange = { viewModel.setAlwaysBlock(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF4CAF50)
+                        )
+                    )
+                }
+
+                // 5. 1 Min / Hour Limit per App Switch
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF2C2C2C)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = if (state.isHourlyLimitEnabled) Color(0xFF81C784) else Color(0xFF9E9E9E),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = AppStrings.get("hourly_limit_title", isEng),
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = AppStrings.get("hourly_limit_desc", isEng),
+                            color = Color(0xFF8E8E8E),
+                            fontSize = 12.sp
+                        )
+                        if (state.isHourlyLimitEnabled) {
+                            Text(
+                                text = String.format(
+                                    AppStrings.get("daily_usage_counter", isEng),
+                                    state.dailyUsedMinutes,
+                                    com.example.enigmafocus.data.AppPreferences.MAX_DAILY_UNLOCK_MINUTES
+                                ),
+                                color = if (state.dailyUsedMinutes >= com.example.enigmafocus.data.AppPreferences.MAX_DAILY_UNLOCK_MINUTES) {
+                                    Color(0xFFFF8A80)
+                                } else {
+                                    Color(0xFF81C784)
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = state.isHourlyLimitEnabled,
+                        onCheckedChange = { viewModel.setHourlyLimit(it) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = Color(0xFF4CAF50)

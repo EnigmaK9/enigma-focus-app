@@ -51,6 +51,11 @@ object AppStrings {
         "always_block_desc" to "Block distractions 24/7 even outside timer sessions",
         "anti_impulse_title" to "Anti-Impulse Cooldown (60s)",
         "anti_impulse_desc" to "Requires a 60-second reflection countdown before stopping focus",
+        "hourly_limit_title" to "1 Min / Hour Limit (Max 15m/Day)",
+        "hourly_limit_desc" to "Allows 1 min/hour per blocked app at any time, up to 15 min/day total (resets at :00 / 00:00)",
+        "hourly_limit_reached" to "1 min/hour limit reached · Resets in %d min",
+        "daily_cap_reached" to "Daily limit reached (%d/%d min) · Resets in %s",
+        "daily_usage_counter" to "Used today: %d / %d min",
 
         // Bedtime Pop-up
         "sleep_nudge_title" to "Rest & Sleep Hours 🌙",
@@ -94,6 +99,7 @@ object AppStrings {
         "lang_es" to "Spanish (Español)",
         "permission_accessibility_title" to "Accessibility Service",
         "permission_accessibility_active" to "Active (Window & URL interception)",
+        "permission_accessibility_disconnected" to "Stopped by system (Tap to re-enable)",
         "permission_accessibility_inactive" to "Disabled",
         "permission_accessibility_desc" to "Instantly catches blocked apps and displays the mindful breathing screen.",
         "permission_grayscale_title" to "Grayscale (Secure Settings)",
@@ -160,6 +166,11 @@ object AppStrings {
         "always_block_desc" to "Bloquear continuamente las 24 horas del día",
         "anti_impulse_title" to "Retardo Anti-Impulso (60s)",
         "anti_impulse_desc" to "Exige 60 segundos de espera reflexiva antes de detener el enfoque",
+        "hourly_limit_title" to "Límite 1 min/hora (Máx 15m/día)",
+        "hourly_limit_desc" to "Permite 1 min/hora por app en cualquier momento, hasta 15 min/día en total (reinicia en :00 / 00:00)",
+        "hourly_limit_reached" to "Límite de 1 min/hora usado · Disponible en %d min",
+        "daily_cap_reached" to "Límite diario alcanzado (%d/%d min) · Disponible en %s",
+        "daily_usage_counter" to "Llevas hoy: %d / %d min",
 
         // Bedtime Pop-up
         "sleep_nudge_title" to "¡Hora de dormir y descansar! 🌙",
@@ -203,6 +214,7 @@ object AppStrings {
         "lang_es" to "Español",
         "permission_accessibility_title" to "Servicio de Accesibilidad",
         "permission_accessibility_active" to "Activo (Detección de ventanas y URLs)",
+        "permission_accessibility_disconnected" to "Detenido por el sistema (Toca para reactivar)",
         "permission_accessibility_inactive" to "Desactivado",
         "permission_accessibility_desc" to "Detecta en tiempo real cuando abres apps bloqueadas para desplegar la pantalla de respiración.",
         "permission_grayscale_title" to "Escala de Grises (Ajustes Seguros)",

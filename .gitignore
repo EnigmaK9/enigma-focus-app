@@ -10,3 +10,4 @@ app/build/
 .cxx
 local.properties
 .kotlin
+*.apk

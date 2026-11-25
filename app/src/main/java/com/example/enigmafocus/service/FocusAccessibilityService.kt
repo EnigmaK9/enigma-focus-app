@@ -29,6 +29,8 @@ import com.example.enigmafocus.ui.block.SleepOverlayManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -51,6 +53,10 @@ class FocusAccessibilityService : AccessibilityService() {
 
         fun recordHeartbeat() {
             lastHeartbeatTime = System.currentTimeMillis()
+        }
+
+        fun isHeartbeatStale(nowMs: Long = System.currentTimeMillis(), maxAgeMs: Long = 10_000L): Boolean {
+            return lastHeartbeatTime == 0L || (nowMs - lastHeartbeatTime) > maxAgeMs
         }
 
         fun clearDebounce() {
@@ -80,38 +86,52 @@ class FocusAccessibilityService : AccessibilityService() {
 
         fun restartAccessibilityService(context: Context) {
             try {
-                val myComponent = ComponentName(context, FocusAccessibilityService::class.java).flattenToString()
+                val appContext = context.applicationContext ?: context
+                val component = ComponentName(appContext, FocusAccessibilityService::class.java)
+                val fullComponent = component.flattenToString()
+                val shortComponent = component.flattenToShortString()
                 val currentSetting = Settings.Secure.getString(
-                    context.contentResolver,
+                    appContext.contentResolver,
                     Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
                 ) ?: ""
 
-                val services = currentSetting.split(":")
-                    .filter { it.isNotBlank() && it != myComponent }
+                val otherServices = currentSetting.split(":")
+                    .filter { it.isNotBlank() && it != fullComponent && it != shortComponent }
                     .toMutableList()
 
-                // Step 1: Remove our service component
+                // Step 1: Remove our service component so AccessibilityManagerService clears crashed state
                 Settings.Secure.putString(
-                    context.contentResolver,
+                    appContext.contentResolver,
                     Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                    services.joinToString(":")
+                    otherServices.joinToString(":")
                 )
 
-                // Step 2: Re-add our service component to trigger framework rebind
-                services.add(myComponent)
-                Settings.Secure.putString(
-                    context.contentResolver,
-                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                    services.joinToString(":")
-                )
-                Log.i(TAG, "🔄 Cycled ENABLED_ACCESSIBILITY_SERVICES to rebind service")
+                // Step 2: Re-add after a short delay so the ContentObserver observes both transitions
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    try {
+                        val updatedServices = otherServices.toMutableList().apply { add(fullComponent) }
+                        Settings.Secure.putString(
+                            appContext.contentResolver,
+                            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                            updatedServices.joinToString(":")
+                        )
+                        Settings.Secure.putInt(
+                            appContext.contentResolver,
+                            Settings.Secure.ACCESSIBILITY_ENABLED,
+                            1
+                        )
+                        Log.i(TAG, "🔄 Cycled ENABLED_ACCESSIBILITY_SERVICES to rebind service")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to re-add accessibility service setting", e)
+                    }
+                }, 350L)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to cycle accessibility service setting", e)
             }
         }
     }
 
-    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var watchdogJob: Job? = null
 
     private val screenStateReceiver = object : BroadcastReceiver() {
@@ -223,12 +243,10 @@ class FocusAccessibilityService : AccessibilityService() {
 
                         // Failsafe 3: If a blocked package persists in any active window
                         // without either the overlay showing or BlockActivity active, kick to HOME screen
-                        if (FocusInterceptor.shouldBlockPackage(packageName, targetPkg, context = this@FocusAccessibilityService) &&
-                            !BlockOverlayManager.isShowing() &&
-                            !BlockActivity.isBlockScreenShowing
-                        ) {
+                        val isTargetBlocked = FocusInterceptor.shouldBlockPackage(packageName, targetPkg, context = this@FocusAccessibilityService)
+                        if (isTargetBlocked && !BlockOverlayManager.isAnyBlockBarrierShowing()) {
                             blockedPackageCounter++
-                            if (blockedPackageCounter >= 2) { // ~600ms of bypassed blocked app
+                            if (blockedPackageCounter >= 2) { // ~800ms of bypassed blocked app
                                 Log.w(TAG, "🚨 Failsafe triggered: Blocked app $targetPkg detected without block screen. Sending to HOME!")
                                 performGlobalAction(GLOBAL_ACTION_HOME)
                                 blockedPackageCounter = 0
@@ -236,12 +254,18 @@ class FocusAccessibilityService : AccessibilityService() {
                         } else {
                             blockedPackageCounter = 0
                         }
+
+                        val needsFastPolling = isTargetBlocked ||
+                            AppPreferences.hasActiveTemporaryWhitelist() ||
+                            FocusInterceptor.BROWSER_PACKAGES.contains(activePkg)
+                        delay(if (needsFastPolling) 400L else 2000L)
+                        continue
                     }
                 } catch (t: Throwable) {
                     // Prevent any exception from killing the watchdog coroutine
                     Log.e(TAG, "Error in watchdog iteration", t)
                 }
-                delay(300)
+                delay(if (AppPreferences.hasActiveTemporaryWhitelist()) 400L else 2000L)
             }
         }
     }
@@ -287,13 +311,17 @@ class FocusAccessibilityService : AccessibilityService() {
     private fun checkBrowserUrls(root: AccessibilityNodeInfo, packageName: String) {
         if (!FocusInterceptor.BROWSER_PACKAGES.contains(packageName)) return
 
-        val isFocusActive = ScheduleEvaluator.isFocusActive() || AppPreferences.isAlwaysBlockEnabled()
+        val isFocusActive = ScheduleEvaluator.isFocusActive() ||
+            AppPreferences.isAlwaysBlockEnabled() ||
+            AppPreferences.isHourlyLimitEnabled()
         if (!isFocusActive) return
 
         val detectedDomain = FocusInterceptor.findBlockedDomainInNode(root) ?: return
 
-        if (AppPreferences.isTemporarilyWhitelisted(packageName)) return
         val domainIdentifier = "Web ($detectedDomain)"
+        if (AppPreferences.isTemporarilyWhitelisted(packageName) ||
+            AppPreferences.isTemporarilyWhitelisted(domainIdentifier)
+        ) return
         if (BlockOverlayManager.isShowing() && BlockOverlayManager.getCurrentPackage() == domainIdentifier) return
 
         val now = System.currentTimeMillis()
@@ -351,12 +379,14 @@ class FocusAccessibilityService : AccessibilityService() {
             return
         }
 
-        if (BlockOverlayManager.isShowing() && BlockOverlayManager.getCurrentPackage() == packageName) {
+        if ((BlockOverlayManager.isShowing() && BlockOverlayManager.getCurrentPackage() == packageName) ||
+            (BlockActivity.isBlockScreenShowing && BlockActivity.currentBlockedPackage == packageName)
+        ) {
             return
         }
 
         val now = System.currentTimeMillis()
-        val isBarrierAlreadyVisible = BlockOverlayManager.isShowing() || BlockActivity.isBlockScreenShowing
+        val isBarrierAlreadyVisible = BlockOverlayManager.isAnyBlockBarrierShowing()
         if (packageName == lastBlockedPkg && (now - lastBlockedTime) < DEBOUNCE_MS && isBarrierAlreadyVisible) {
             return
         }
@@ -367,23 +397,25 @@ class FocusAccessibilityService : AccessibilityService() {
         vibratePhone()
         FocusEventLogger.logEvent(this, "app_blocked", mapOf("package" to packageName))
 
-        // Failsafe 1: Attach TYPE_ACCESSIBILITY_OVERLAY first for 0ms instant visual barrier
-        BlockOverlayManager.showOverlay(this, packageName) {
+        // Primary barrier: Attach TYPE_ACCESSIBILITY_OVERLAY for 0ms instant visual barrier
+        val overlayAttached = BlockOverlayManager.showOverlay(this, packageName) {
             clearDebounce()
         }
 
-        // Failsafe 2: Launch full-screen BlockActivity immediately to push blocked app to background
-        try {
-            val blockIntent = Intent(this, BlockActivity::class.java).apply {
-                putExtra(BlockActivity.EXTRA_BLOCKED_PACKAGE, packageName)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                        Intent.FLAG_ACTIVITY_NO_ANIMATION
+        // Fallback barrier: Launch BlockActivity only if the accessibility overlay failed to attach
+        if (!overlayAttached) {
+            try {
+                val blockIntent = Intent(this, BlockActivity::class.java).apply {
+                    putExtra(BlockActivity.EXTRA_BLOCKED_PACKAGE, packageName)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_NO_ANIMATION
+                }
+                startActivity(blockIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting BlockActivity failsafe", e)
             }
-            startActivity(blockIntent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting BlockActivity failsafe", e)
         }
     }
 
@@ -417,6 +449,7 @@ class FocusAccessibilityService : AccessibilityService() {
             // Ignore
         }
         watchdogJob?.cancel()
+        serviceScope.cancel()
         BlockOverlayManager.hideOverlay(this)
         SleepOverlayManager.dismiss(this)
         super.onDestroy()

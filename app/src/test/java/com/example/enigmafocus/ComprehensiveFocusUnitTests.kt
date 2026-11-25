@@ -1,5 +1,6 @@
 package com.example.enigmafocus
 
+import com.example.enigmafocus.core.interceptor.FocusInterceptor
 import com.example.enigmafocus.data.AppInfo
 import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.data.FocusInterval
@@ -218,5 +219,144 @@ class ComprehensiveFocusUnitTests {
         val expected = "adb shell pm grant com.example.enigmafocus android.permission.WRITE_SECURE_SETTINGS"
         val generated = "adb shell pm grant $packageName android.permission.WRITE_SECURE_SETTINGS"
         assertEquals(expected, generated)
+    }
+
+    // 6. 1-Minute-Per-Hour-Per-App Limit Tests (24/7 enforcement, resets every clock hour at :00, max 15 min/day)
+    @Test
+    fun testHourlyLimit_enforcesOneMinutePerHourAtAnyTime() {
+        AppPreferences.clearTemporaryWhitelist()
+        AppPreferences.clearHourlyCooldowns()
+        AppPreferences.clearDailyUsage()
+        AppPreferences.setStrictModeEnabled(false)
+        AppPreferences.setHourlyLimitEnabled(true)
+        AppPreferences.setAlwaysBlockEnabled(false)
+        AppPreferences.setFocusActive(false, 0L, 0)
+        AppPreferences.setBlockedPackages(setOf("com.instagram.android", "com.reddit.frontpage"))
+
+        val ownPkg = "com.example.enigmafocus"
+        val instagram = "com.instagram.android"
+        val reddit = "com.reddit.frontpage"
+        val cal = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 24, 19, 30, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val t0 = cal.timeInMillis // 19:30:00.000 (outside schedules, Always Block OFF)
+
+        // Blocked even outside schedules and with Always Block OFF because Hourly Limit is enabled
+        assertTrue(FocusInterceptor.shouldBlockPackage(ownPkg, instagram, cal))
+        assertTrue(AppPreferences.canUseTemporaryUnlock(instagram, t0))
+        assertTrue(AppPreferences.canUseTemporaryUnlock(reddit, t0))
+        assertEquals(0, AppPreferences.getDailyUsedMinutes(t0))
+
+        // Unlock Instagram for 1 minute at 19:30
+        AppPreferences.setTemporaryWhitelist(instagram, 1, nowMs = t0)
+        assertEquals(1, AppPreferences.getDailyUsedMinutes(t0))
+        val cal30s = Calendar.getInstance().apply { timeInMillis = t0 + 30_000L }
+        assertTrue(AppPreferences.isTemporarilyWhitelisted(instagram, t0 + 30_000L))
+        assertTrue(AppPreferences.hasActiveTemporaryWhitelist(t0 + 30_000L))
+        assertFalse(FocusInterceptor.shouldBlockPackage(ownPkg, instagram, cal30s))
+        assertFalse(AppPreferences.canUseTemporaryUnlock(instagram, t0 + 30_000L))
+
+        // After 1 minute expires (19:31), Instagram is blocked again and in cooldown until 20:00
+        val tAfter1Min = t0 + 60_000L
+        val calAfter1Min = Calendar.getInstance().apply { timeInMillis = tAfter1Min }
+        assertFalse(AppPreferences.isTemporarilyWhitelisted(instagram, tAfter1Min))
+        assertFalse(AppPreferences.hasActiveTemporaryWhitelist(tAfter1Min))
+        assertTrue(FocusInterceptor.shouldBlockPackage(ownPkg, instagram, calAfter1Min))
+        assertFalse(AppPreferences.canUseTemporaryUnlock(instagram, tAfter1Min))
+        assertEquals(29 * 60_000L, AppPreferences.getRemainingHourlyCooldownMillis(instagram, tAfter1Min))
+
+        // Reddit is unaffected (per-app hourly limit)
+        assertTrue(AppPreferences.canUseTemporaryUnlock(reddit, tAfter1Min))
+
+        // clearTemporaryWhitelist() does NOT reset the hourly cooldown
+        AppPreferences.clearTemporaryWhitelist()
+        assertFalse(AppPreferences.canUseTemporaryUnlock(instagram, tAfter1Min))
+
+        // At 19:59:59.999, still in cooldown
+        val calBeforeNextHour = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 24, 19, 59, 59)
+            set(Calendar.MILLISECOND, 999)
+        }
+        assertFalse(AppPreferences.canUseTemporaryUnlock(instagram, calBeforeNextHour.timeInMillis))
+
+        // At 20:00:00.000 (top of the next clock hour), Instagram resets and can be unlocked again
+        val calNextHour = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 24, 20, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(0L, AppPreferences.getRemainingHourlyCooldownMillis(instagram, calNextHour.timeInMillis))
+        assertTrue(AppPreferences.canUseTemporaryUnlock(instagram, calNextHour.timeInMillis))
+
+        // Midnight rollover: unlock at 23:55 -> resets at 00:00 next day
+        val cal2355 = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 24, 23, 55, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        AppPreferences.setTemporaryWhitelist(instagram, 1, nowMs = cal2355.timeInMillis)
+        assertEquals(2, AppPreferences.getDailyUsedMinutes(cal2355.timeInMillis))
+        val cal2356 = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 24, 23, 56, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(4 * 60_000L, AppPreferences.getRemainingHourlyCooldownMillis(instagram, cal2356.timeInMillis))
+
+        val calMidnight = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 25, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(0L, AppPreferences.getRemainingHourlyCooldownMillis(instagram, calMidnight.timeInMillis))
+        assertEquals(0, AppPreferences.getDailyUsedMinutes(calMidnight.timeInMillis))
+        assertTrue(AppPreferences.canUseTemporaryUnlock(instagram, calMidnight.timeInMillis))
+
+        // Clean up singleton state so subsequent tests remain isolated
+        AppPreferences.clearTemporaryWhitelist()
+        AppPreferences.clearHourlyCooldowns()
+        AppPreferences.clearDailyUsage()
+    }
+
+    @Test
+    fun testDailyCap_enforcesMaxFifteenMinutesPerDay() {
+        AppPreferences.clearTemporaryWhitelist()
+        AppPreferences.clearHourlyCooldowns()
+        AppPreferences.clearDailyUsage()
+        AppPreferences.setStrictModeEnabled(false)
+        AppPreferences.setHourlyLimitEnabled(true)
+
+        val calBase = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 24, 8, 10, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val tBase = calBase.timeInMillis
+
+        // Simulate 15 one-minute unlocks across apps on the same day
+        for (i in 1..AppPreferences.MAX_DAILY_UNLOCK_MINUTES) {
+            val pkg = "com.example.distraction.$i"
+            assertTrue(AppPreferences.canUseTemporaryUnlock(pkg, tBase))
+            AppPreferences.setTemporaryWhitelist(pkg, 1, nowMs = tBase)
+            assertEquals(i, AppPreferences.getDailyUsedMinutes(tBase))
+        }
+
+        // After 15 minutes used today, even a fresh app in the next hour is blocked until midnight
+        val calNextHour = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 24, 9, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertTrue(AppPreferences.isDailyCapReached(calNextHour.timeInMillis))
+        assertFalse(AppPreferences.canUseTemporaryUnlock("com.instagram.android", calNextHour.timeInMillis))
+        assertEquals(15 * 60 * 60_000L, AppPreferences.getRemainingDailyCapResetMillis(calNextHour.timeInMillis))
+
+        // Next day at 00:00:00, daily usage resets to 0 and unlocks work again
+        val calNextDay = Calendar.getInstance().apply {
+            set(2026, Calendar.NOVEMBER, 25, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(0, AppPreferences.getDailyUsedMinutes(calNextDay.timeInMillis))
+        assertFalse(AppPreferences.isDailyCapReached(calNextDay.timeInMillis))
+        assertTrue(AppPreferences.canUseTemporaryUnlock("com.instagram.android", calNextDay.timeInMillis))
+
+        AppPreferences.clearTemporaryWhitelist()
+        AppPreferences.clearHourlyCooldowns()
+        AppPreferences.clearDailyUsage()
     }
 }

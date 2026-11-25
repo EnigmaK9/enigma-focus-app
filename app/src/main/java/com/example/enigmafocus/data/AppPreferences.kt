@@ -18,11 +18,17 @@ object AppPreferences {
     private const val KEY_AUTO_GRAYSCALE = "auto_grayscale_on_focus"
     private const val KEY_ALWAYS_BLOCK = "always_block_selected_apps"
     private const val KEY_STRICT_MODE = "strict_mode_no_breaks"
-    private const val KEY_TEMP_WHITELIST_EXPIRY = "temp_whitelist_expiry"
-    private const val KEY_TEMP_WHITELIST_PKG = "temp_whitelist_pkg"
     private const val KEY_FOCUS_INTERVALS = "focus_intervals"
     private const val KEY_APP_LANGUAGE = "app_language"
     private const val KEY_ANTI_IMPULSE = "anti_impulse_cooldown"
+    private const val KEY_HOURLY_LIMIT = "hourly_limit_1m_per_app"
+    private const val KEY_TEMP_WHITELIST_PKGS = "temp_whitelist_pkgs"
+    private const val KEY_HOURLY_COOLDOWN_PKGS = "hourly_cooldown_pkgs"
+    private const val KEY_TEMP_WHITELIST_EXPIRY_PREFIX = "temp_whitelist_expiry_"
+    private const val KEY_HOURLY_COOLDOWN_UNTIL_PREFIX = "hourly_cooldown_until_"
+    private const val KEY_DAILY_UNLOCK_MINUTES_USED = "daily_unlock_minutes_used"
+    private const val KEY_DAILY_UNLOCK_DAY_KEY = "daily_unlock_day_key"
+    const val MAX_DAILY_UNLOCK_MINUTES = 15
 
     // Default distraction packages
     val DEFAULT_POPULAR_PACKAGES = setOf(
@@ -153,6 +159,12 @@ object AppPreferences {
     private val _antiImpulseFlow = MutableStateFlow(false)
     val antiImpulseFlow: StateFlow<Boolean> = _antiImpulseFlow.asStateFlow()
 
+    private val _hourlyLimitFlow = MutableStateFlow(true)
+    val hourlyLimitFlow: StateFlow<Boolean> = _hourlyLimitFlow.asStateFlow()
+
+    private val _dailyUsedMinutesFlow = MutableStateFlow(0)
+    val dailyUsedMinutesFlow: StateFlow<Int> = _dailyUsedMinutesFlow.asStateFlow()
+
     private val _intervalsFlow = MutableStateFlow<List<FocusInterval>>(emptyList())
     val intervalsFlow: StateFlow<List<FocusInterval>> = _intervalsFlow.asStateFlow()
 
@@ -168,24 +180,18 @@ object AppPreferences {
             }
         }
 
-        // Initialize defaults if not set
-        if (!prefs.contains(KEY_BLOCKED_PACKAGES)) {
-            prefs.edit().putStringSet(KEY_BLOCKED_PACKAGES, DEFAULT_POPULAR_PACKAGES).apply()
-        }
-        if (!prefs.contains(KEY_ALWAYS_BLOCK)) {
-            prefs.edit().putBoolean(KEY_ALWAYS_BLOCK, true).apply()
-        }
-        if (!prefs.contains(KEY_AUTO_GRAYSCALE)) {
-            prefs.edit().putBoolean(KEY_AUTO_GRAYSCALE, true).apply()
-        }
-        if (!prefs.contains(KEY_APP_LANGUAGE)) {
-            prefs.edit().putString(KEY_APP_LANGUAGE, "system").apply() // Detect system language by default
-        }
-        if (!prefs.contains(KEY_ANTI_IMPULSE)) {
-            prefs.edit().putBoolean(KEY_ANTI_IMPULSE, false).apply()
-        }
-        if (!prefs.contains("initial_grayscale_applied")) {
-            prefs.edit().putBoolean("initial_grayscale_applied", true).apply()
+        // Initialize defaults if not set in a single batched transaction
+        val needsInitialGrayscale = !prefs.contains("initial_grayscale_applied")
+        prefs.edit().apply {
+            if (!prefs.contains(KEY_BLOCKED_PACKAGES)) putStringSet(KEY_BLOCKED_PACKAGES, DEFAULT_POPULAR_PACKAGES)
+            if (!prefs.contains(KEY_ALWAYS_BLOCK)) putBoolean(KEY_ALWAYS_BLOCK, true)
+            if (!prefs.contains(KEY_AUTO_GRAYSCALE)) putBoolean(KEY_AUTO_GRAYSCALE, true)
+            if (!prefs.contains(KEY_APP_LANGUAGE)) putString(KEY_APP_LANGUAGE, "system")
+            if (!prefs.contains(KEY_ANTI_IMPULSE)) putBoolean(KEY_ANTI_IMPULSE, false)
+            if (!prefs.contains(KEY_HOURLY_LIMIT)) putBoolean(KEY_HOURLY_LIMIT, true)
+            if (needsInitialGrayscale) putBoolean("initial_grayscale_applied", true)
+        }.apply()
+        if (needsInitialGrayscale) {
             GrayscaleManager.setGrayscaleEnabled(context, true)
         }
 
@@ -196,6 +202,8 @@ object AppPreferences {
         _strictModeFlow.value = prefs.getBoolean(KEY_STRICT_MODE, false)
         _languageFlow.value = getAppLanguage()
         _antiImpulseFlow.value = prefs.getBoolean(KEY_ANTI_IMPULSE, false)
+        _hourlyLimitFlow.value = prefs.getBoolean(KEY_HOURLY_LIMIT, true)
+        _dailyUsedMinutesFlow.value = getDailyUsedMinutes()
 
         loadIntervals()
     }
@@ -317,24 +325,189 @@ object AppPreferences {
         _strictModeFlow.value = enabled
     }
 
-    fun setTemporaryWhitelist(packageName: String, durationMinutes: Int) {
-        val expiry = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
-        putStringPref(KEY_TEMP_WHITELIST_PKG, packageName)
-        putLongPref(KEY_TEMP_WHITELIST_EXPIRY, expiry)
+    fun isHourlyLimitEnabled(): Boolean {
+        return getBooleanPref(KEY_HOURLY_LIMIT, true)
+    }
+
+    fun setHourlyLimitEnabled(enabled: Boolean) {
+        putBooleanPref(KEY_HOURLY_LIMIT, enabled)
+        _hourlyLimitFlow.value = enabled
+    }
+
+    fun setTemporaryWhitelist(
+        packageName: String,
+        durationMinutes: Int,
+        nowMs: Long = System.currentTimeMillis()
+    ) {
+        val expiry = nowMs + (durationMinutes * 60 * 1000L)
+        val currentPkgs = getStringSetPref(KEY_TEMP_WHITELIST_PKGS, emptySet()).toMutableSet()
+        currentPkgs.add(packageName)
+
+        val applyHourlyCooldown = isHourlyLimitEnabled() && durationMinutes > 0
+        val cooldownUntil = if (applyHourlyCooldown) getNextHourBoundaryMillis(nowMs) else 0L
+        val cooldownPkgs = if (applyHourlyCooldown) {
+            getStringSetPref(KEY_HOURLY_COOLDOWN_PKGS, emptySet()).toMutableSet().apply { add(packageName) }
+        } else {
+            null
+        }
+        val todayKey = if (applyHourlyCooldown) getDayKey(nowMs) else null
+        val newDailyUsed = if (applyHourlyCooldown) getDailyUsedMinutes(nowMs) + durationMinutes else 0
+
+        if (::prefs.isInitialized) {
+            prefs.edit().apply {
+                putLong("$KEY_TEMP_WHITELIST_EXPIRY_PREFIX$packageName", expiry)
+                putStringSet(KEY_TEMP_WHITELIST_PKGS, currentPkgs)
+                if (applyHourlyCooldown && cooldownPkgs != null && todayKey != null) {
+                    putLong("$KEY_HOURLY_COOLDOWN_UNTIL_PREFIX$packageName", cooldownUntil)
+                    putStringSet(KEY_HOURLY_COOLDOWN_PKGS, cooldownPkgs)
+                    putString(KEY_DAILY_UNLOCK_DAY_KEY, todayKey)
+                    putInt(KEY_DAILY_UNLOCK_MINUTES_USED, newDailyUsed)
+                }
+            }.apply()
+        } else {
+            inMemoryMap["$KEY_TEMP_WHITELIST_EXPIRY_PREFIX$packageName"] = expiry
+            inMemoryMap[KEY_TEMP_WHITELIST_PKGS] = currentPkgs
+            if (applyHourlyCooldown && cooldownPkgs != null && todayKey != null) {
+                inMemoryMap["$KEY_HOURLY_COOLDOWN_UNTIL_PREFIX$packageName"] = cooldownUntil
+                inMemoryMap[KEY_HOURLY_COOLDOWN_PKGS] = cooldownPkgs
+                inMemoryMap[KEY_DAILY_UNLOCK_DAY_KEY] = todayKey
+                inMemoryMap[KEY_DAILY_UNLOCK_MINUTES_USED] = newDailyUsed
+            }
+        }
+        if (applyHourlyCooldown) {
+            _dailyUsedMinutesFlow.value = newDailyUsed
+        }
     }
 
     fun clearTemporaryWhitelist() {
-        putStringPref(KEY_TEMP_WHITELIST_PKG, null)
-        putLongPref(KEY_TEMP_WHITELIST_EXPIRY, 0L)
+        val currentPkgs = getStringSetPref(KEY_TEMP_WHITELIST_PKGS, emptySet())
+        if (::prefs.isInitialized) {
+            prefs.edit().apply {
+                for (pkg in currentPkgs) {
+                    remove("$KEY_TEMP_WHITELIST_EXPIRY_PREFIX$pkg")
+                }
+                putStringSet(KEY_TEMP_WHITELIST_PKGS, emptySet())
+            }.apply()
+        } else {
+            for (pkg in currentPkgs) {
+                inMemoryMap.remove("$KEY_TEMP_WHITELIST_EXPIRY_PREFIX$pkg")
+            }
+            inMemoryMap[KEY_TEMP_WHITELIST_PKGS] = emptySet<String>()
+        }
     }
 
-    fun isTemporarilyWhitelisted(packageName: String): Boolean {
-        val whitelistedPkg = getStringPref(KEY_TEMP_WHITELIST_PKG, null) ?: return false
-        val expiry = getLongPref(KEY_TEMP_WHITELIST_EXPIRY, 0L)
-        if (whitelistedPkg == packageName && System.currentTimeMillis() < expiry) {
-            return true
+    fun isTemporarilyWhitelisted(
+        packageName: String,
+        nowMs: Long = System.currentTimeMillis()
+    ): Boolean {
+        val perPkgExpiry = getLongPref("$KEY_TEMP_WHITELIST_EXPIRY_PREFIX$packageName", 0L)
+        return perPkgExpiry > 0L && nowMs < perPkgExpiry
+    }
+
+    fun hasActiveTemporaryWhitelist(nowMs: Long = System.currentTimeMillis()): Boolean {
+        val currentPkgs = getStringSetPref(KEY_TEMP_WHITELIST_PKGS, emptySet())
+        return currentPkgs.any { pkg ->
+            val expiry = getLongPref("$KEY_TEMP_WHITELIST_EXPIRY_PREFIX$pkg", 0L)
+            expiry > 0L && nowMs < expiry
         }
-        return false
+    }
+
+    fun getNextHourBoundaryMillis(nowMs: Long = System.currentTimeMillis()): Long {
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.HOUR_OF_DAY, 1)
+        }
+        return calendar.timeInMillis
+    }
+
+    fun getHourlyCooldownUntil(packageName: String): Long {
+        return getLongPref("$KEY_HOURLY_COOLDOWN_UNTIL_PREFIX$packageName", 0L)
+    }
+
+    fun getRemainingHourlyCooldownMillis(
+        packageName: String,
+        nowMs: Long = System.currentTimeMillis()
+    ): Long {
+        if (!isHourlyLimitEnabled()) return 0L
+        val cooldownUntil = getHourlyCooldownUntil(packageName)
+        return (cooldownUntil - nowMs).coerceAtLeast(0L)
+    }
+
+    fun getDayKey(nowMs: Long = System.currentTimeMillis()): String {
+        val calendar = Calendar.getInstance().apply { timeInMillis = nowMs }
+        return "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.DAY_OF_YEAR)}"
+    }
+
+    fun getNextDayBoundaryMillis(nowMs: Long = System.currentTimeMillis()): Long {
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return calendar.timeInMillis
+    }
+
+    fun getDailyUsedMinutes(nowMs: Long = System.currentTimeMillis()): Int {
+        val storedDay = getStringPref(KEY_DAILY_UNLOCK_DAY_KEY, null)
+        if (storedDay != getDayKey(nowMs)) {
+            return 0
+        }
+        return getIntPref(KEY_DAILY_UNLOCK_MINUTES_USED, 0).coerceAtLeast(0)
+    }
+
+    fun isDailyCapReached(nowMs: Long = System.currentTimeMillis()): Boolean {
+        if (!isHourlyLimitEnabled()) return false
+        return getDailyUsedMinutes(nowMs) >= MAX_DAILY_UNLOCK_MINUTES
+    }
+
+    fun getRemainingDailyCapResetMillis(nowMs: Long = System.currentTimeMillis()): Long {
+        if (!isDailyCapReached(nowMs)) return 0L
+        return (getNextDayBoundaryMillis(nowMs) - nowMs).coerceAtLeast(0L)
+    }
+
+    fun clearDailyUsage() {
+        if (::prefs.isInitialized) {
+            prefs.edit().apply {
+                remove(KEY_DAILY_UNLOCK_DAY_KEY)
+                putInt(KEY_DAILY_UNLOCK_MINUTES_USED, 0)
+            }.apply()
+        } else {
+            inMemoryMap.remove(KEY_DAILY_UNLOCK_DAY_KEY)
+            inMemoryMap[KEY_DAILY_UNLOCK_MINUTES_USED] = 0
+        }
+        _dailyUsedMinutesFlow.value = 0
+    }
+
+    fun canUseTemporaryUnlock(
+        packageName: String,
+        nowMs: Long = System.currentTimeMillis()
+    ): Boolean {
+        if (isStrictModeEnabled()) return false
+        if (isDailyCapReached(nowMs)) return false
+        return getRemainingHourlyCooldownMillis(packageName, nowMs) == 0L
+    }
+
+    fun clearHourlyCooldowns() {
+        val cooldownPkgs = getStringSetPref(KEY_HOURLY_COOLDOWN_PKGS, emptySet())
+        if (::prefs.isInitialized) {
+            prefs.edit().apply {
+                for (pkg in cooldownPkgs) {
+                    remove("$KEY_HOURLY_COOLDOWN_UNTIL_PREFIX$pkg")
+                }
+                putStringSet(KEY_HOURLY_COOLDOWN_PKGS, emptySet())
+            }.apply()
+        } else {
+            for (pkg in cooldownPkgs) {
+                inMemoryMap.remove("$KEY_HOURLY_COOLDOWN_UNTIL_PREFIX$pkg")
+            }
+            inMemoryMap[KEY_HOURLY_COOLDOWN_PKGS] = emptySet<String>()
+        }
     }
 
     // --- Scheduled Intervals Logic ---

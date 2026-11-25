@@ -17,6 +17,7 @@ object FocusSessionManager {
         try {
             val shouldRun = AppPreferences.isFocusActive() ||
                             AppPreferences.isAlwaysBlockEnabled() ||
+                            AppPreferences.isHourlyLimitEnabled() ||
                             ScheduleEvaluator.isFocusActive()
 
             if (shouldRun && !AppPreferences.isFocusActive()) {

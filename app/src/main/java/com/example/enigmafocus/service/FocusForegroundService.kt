@@ -19,9 +19,12 @@ import com.example.enigmafocus.data.AppPreferences
 import com.example.enigmafocus.manager.GrayscaleManager
 import com.example.enigmafocus.manager.UsageStatsHelper
 import com.example.enigmafocus.ui.block.BlockActivity
+import com.example.enigmafocus.ui.block.BlockOverlayManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -40,10 +43,11 @@ class FocusForegroundService : Service() {
         private const val NOTIFICATION_ID = 1001
     }
 
-    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var timerJob: Job? = null
     private var lastRestartAttemptTime = 0L
     private var isSentinelOnlyMode = false
+    private var loggedMissingSecureSettingsForRecovery = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -58,7 +62,7 @@ class FocusForegroundService : Service() {
 
         if (action == ACTION_STOP) {
             stopFocusService()
-            return if (AppPreferences.isAlwaysBlockEnabled()) START_STICKY else START_NOT_STICKY
+            return if (AppPreferences.isAlwaysBlockEnabled() || AppPreferences.isHourlyLimitEnabled()) START_STICKY else START_NOT_STICKY
         }
 
         if (action == ACTION_START) {
@@ -77,7 +81,7 @@ class FocusForegroundService : Service() {
             val durationMinutes = AppPreferences.getFocusDurationMinutes()
             startForegroundWithNotification(endTimestamp, durationMinutes, sentinelOnly = false)
             startTimer(endTimestamp)
-        } else if (AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()) {
+        } else if (AppPreferences.isAlwaysBlockEnabled() || AppPreferences.isHourlyLimitEnabled() || ScheduleEvaluator.isFocusActive()) {
             startSentinelMode()
         } else {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -194,51 +198,72 @@ class FocusForegroundService : Service() {
                     }
 
                     // Only run active watchdog checks when the screen is interactive (zero battery drain when screen off)
-                    if (isDeviceInteractive()) {
+                    val interactive = isDeviceInteractive()
+                    if (interactive) {
                         // 2. Health Check Accessibility Service every 2 seconds
                         if (cycleCount % 2 == 0) {
                             checkAndRecoverAccessibilityService()
                         }
 
-                        // 3. Fallback: Secondary Foreground Usage Watchdog
-                        checkForegroundPackageFallback()
+                        // 3. Fallback: Secondary Foreground Usage Watchdog only when accessibility is unhealthy
+                        if (!FocusAccessibilityService.isConnected || FocusAccessibilityService.isHeartbeatStale()) {
+                            checkForegroundPackageFallback()
+                        }
                     }
 
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error in foreground timer loop", t)
                 }
 
-                delay(1000)
+                val nextDelayMs = if (isSentinelOnlyMode && !isDeviceInteractive()) 5000L else 1000L
+                delay(nextDelayMs)
             }
         }
     }
 
     private fun checkAndRecoverAccessibilityService() {
-        if (!AppPreferences.isFocusActive() && !AppPreferences.isAlwaysBlockEnabled() && !ScheduleEvaluator.isFocusActive()) {
+        if (!AppPreferences.isFocusActive() &&
+            !AppPreferences.isAlwaysBlockEnabled() &&
+            !AppPreferences.isHourlyLimitEnabled() &&
+            !ScheduleEvaluator.isFocusActive()
+        ) {
             return
         }
 
         val isEnabled = FocusAccessibilityService.isAccessibilityServiceEnabled(this)
         val isConnected = FocusAccessibilityService.isConnected
         val now = System.currentTimeMillis()
-        val heartbeatStale = (now - FocusAccessibilityService.lastHeartbeatTime) > 4000
+        val heartbeatStale = isConnected && FocusAccessibilityService.isHeartbeatStale(now)
 
         if (!isEnabled || !isConnected || heartbeatStale) {
-            if (now - lastRestartAttemptTime > 3000) {
+            if (!GrayscaleManager.hasSecureSettingsPermission(this)) {
+                if (!loggedMissingSecureSettingsForRecovery) {
+                    loggedMissingSecureSettingsForRecovery = true
+                    Log.w(TAG, "⚠️ FocusAccessibilityService unhealthy (enabled=$isEnabled, connected=$isConnected, stale=$heartbeatStale), but WRITE_SECURE_SETTINGS is missing for auto-recovery.")
+                }
+                return
+            }
+            loggedMissingSecureSettingsForRecovery = false
+            if (now - lastRestartAttemptTime > 5000L) {
                 lastRestartAttemptTime = now
                 Log.w(TAG, "⚠️ FocusAccessibilityService unhealthy (enabled=$isEnabled, connected=$isConnected, stale=$heartbeatStale). Triggering resurrection...")
                 FocusAccessibilityService.restartAccessibilityService(this)
             }
+        } else {
+            loggedMissingSecureSettingsForRecovery = false
         }
     }
 
     private fun checkForegroundPackageFallback() {
-        val isFocusActive = AppPreferences.isFocusActive() || AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()
+        val isFocusActive = AppPreferences.isFocusActive() ||
+            AppPreferences.isAlwaysBlockEnabled() ||
+            AppPreferences.isHourlyLimitEnabled() ||
+            ScheduleEvaluator.isFocusActive()
         if (!isFocusActive) return
 
         val foregroundPkg = UsageStatsHelper.getForegroundPackage(this) ?: return
         if (FocusInterceptor.shouldBlockPackage(packageName, foregroundPkg, context = this)) {
-            if (BlockActivity.isBlockScreenShowing) return
+            if (BlockOverlayManager.isAnyBlockBarrierShowing()) return
             // Blocked app is in foreground! Launch BlockActivity as emergency barrier
             try {
                 val blockIntent = Intent(this, BlockActivity::class.java).apply {
@@ -261,7 +286,7 @@ class FocusForegroundService : Service() {
         if (AppPreferences.isAutoGrayscaleEnabled()) {
             GrayscaleManager.setGrayscaleEnabled(this, false)
         }
-        if (AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()) {
+        if (AppPreferences.isAlwaysBlockEnabled() || AppPreferences.isHourlyLimitEnabled() || ScheduleEvaluator.isFocusActive()) {
             startSentinelMode()
         } else {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -275,7 +300,7 @@ class FocusForegroundService : Service() {
         if (AppPreferences.isAutoGrayscaleEnabled()) {
             GrayscaleManager.setGrayscaleEnabled(this, false)
         }
-        if (AppPreferences.isAlwaysBlockEnabled() || ScheduleEvaluator.isFocusActive()) {
+        if (AppPreferences.isAlwaysBlockEnabled() || AppPreferences.isHourlyLimitEnabled() || ScheduleEvaluator.isFocusActive()) {
             startSentinelMode()
         } else {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -285,6 +310,7 @@ class FocusForegroundService : Service() {
 
     override fun onDestroy() {
         timerJob?.cancel()
+        serviceScope.cancel()
         super.onDestroy()
     }
 }
